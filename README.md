@@ -14,30 +14,9 @@ Permite visualizar porcentajes de tóner, tambores, unidades de imagen, contened
 - 💾 Configuración mediante archivo `.env`
 - 🧩 Estructura modular compatible con Visual Studio Code
 
----
 
-## 🗂️ Estructura del proyecto
 
-MonitorXeroxWeb/
-│
-├── run.py # Punto de entrada Flask
-├── requirements.txt # Dependencias del proyecto
-├── .env # Variables de entorno (NO subir a GitHub)
-├── .gitignore # Archivos a excluir del repositorio
-│
-├── app/
-│ ├── init.py # Inicializa la app Flask
-│ ├── routes.py # Rutas y controladores principales
-│ ├── auth.py # Gestión de usuarios y login
-│ ├── snmp_utils.py # Consultas SNMP a impresoras
-│ └── export_xlsx.py # Generación de reportes Excel
-│
-└── templates/
-├── home.html # Panel principal
-├── login.html # Página de inicio de sesión
-└── account.html # Configuración de cuenta
 
-▶️ Ejecución del proyecto
-python run.py
+
 
 
