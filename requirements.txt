@@ -1,0 +1,24 @@
+# --- CORE FLASK ---
+Flask==3.0.3
+Werkzeug==3.0.3
+itsdangerous==2.2.0
+Jinja2==3.1.4
+
+# --- SNMP LIBRARY ---
+puresnmp==2.1.1
+
+# --- XLSX EXPORT ---
+openpyxl==3.1.5
+
+# --- UTILITIES ---
+requests==2.32.3
+
+# --- Optional (for thread safety & better performance) ---
+gunicorn==23.0.0
+
+# --- Optional (para entorno local Windows/Linux) ---
+python-dotenv==1.0.1
+
+
+
+

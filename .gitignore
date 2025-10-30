@@ -1,0 +1,36 @@
+# ===============================
+# MONITOR XEROX WEB - GITIGNORE
+# ===============================
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.log
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Database ---
+auth.db
+
+# --- Environment file ---
+.env
+
+# --- Compiled / temp files ---
+*.bak
+*.tmp
+*.swp
+.DS_Store
+
+# --- Excel / Export temp files ---
+*.xlsx
+*.xls
+
+# --- VS Code settings (optional) ---
+.vscode/

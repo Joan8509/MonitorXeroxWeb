@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Printers Supplies</title>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --text:#0f172a; --muted:#64748b;
+      --border:#e5e7eb; --accent:#2563eb; --accent-2:#10b981;
+      --okbg:#e7f7ee; --ok:#2e7d32; --badbg:#fdecea; --bad:#b3261e;
+      --zebra:#fbfcff; --hover:#eef6ff; --bar:#eef2f7;
+      --toast-bg:#0f172a; --toast-fg:#ffffff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+    }
+    .container{max-width:min(95vw,1600px); margin:28px auto; padding:0 16px;}
+
+    /* Top bar */
+    .topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px}
+    .title{display:flex; align-items:center; gap:12px}
+    .title-text{
+      font-size:28px; font-weight:900; letter-spacing:.3px; margin:0;
+      background:linear-gradient(90deg,#60a5fa,#2563eb); -webkit-background-clip:text; background-clip:text; color:transparent;
+      text-shadow:0 1px 0 rgba(255,255,255,.35);
+    }
+    .printer-ico{ width:32px; height:32px; }
+
+    /* User menu */
+    .user-menu{
+      display:flex; align-items:center; gap:10px;
+      font-size:14.5px; color:#0f172a; letter-spacing:.2px; font-weight:700;
+    }
+    .user-menu .um-muted{ color:#6b7280; font-weight:600; letter-spacing:.3px; }
+    .user-menu strong{
+      font-weight:900;
+      background:linear-gradient(90deg,#0ea5e9,#2563eb);
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .user-menu .um-sep{ color:#c7d2fe; font-weight:900; margin:0 2px; }
+    .user-menu a{
+      color:#1d4ed8; text-decoration:none; font-weight:800;
+      padding:2px 6px; border-radius:10px; border-bottom:2px solid transparent;
+      transition: all .18s ease;
+    }
+    .user-menu a:hover{ background:#eef2ff; border-bottom-color:#93c5fd; transform: translateY(-.5px); }
+
+    /* Cards / inputs */
+    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 6px 22px rgba(2,6,23,.06)}
+    .sticky-card{ position: sticky; top: 12px; z-index: 30; }
+    .toolbar{display:flex; gap:12px; align-items:end; flex-wrap:wrap}
+    label{font-size:12px; color:var(--muted); letter-spacing:.6px; text-transform:uppercase; font-weight:800}
+    input, textarea{
+      width:100%; border:1px solid var(--border); background:#fff; color:#0f172a;
+      border-radius:14px; padding:10px 12px; font-size:14px; outline:0; transition:all .15s ease;
+      box-shadow: 0 1px 0 rgba(255,255,255,.7) inset;
+    }
+    input:focus, textarea:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+    textarea{height:110px; resize:vertical}
+    .stack{display:flex; flex-direction:column; gap:6px}
+    .row{display:flex; gap:16px; flex-wrap:wrap}
+    .w-200{width:200px} .w-280{width:280px} .w-420{width:420px}
+
+    .btn{
+      appearance:none; border:0; border-radius:12px; padding:10px 14px; font-weight:800; letter-spacing:.2px;
+      cursor:pointer; transition:transform .06s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
+      box-shadow: 0 8px 20px rgba(37,99,235,.12);
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{background:linear-gradient(135deg, #2563eb, #0ea5e9); color:#fff; box-shadow:0 10px 24px rgba(37,99,235,.25)}
+    .btn-secondary{background:transparent; color:var(--accent); border:1px solid var(--accent)}
+    #spinner{display:none; width:18px; height:18px; border:3px solid #cbd5e1; border-top-color:var(--accent); border-radius:50%;
+             animation:spin .8s linear infinite; margin-left:8px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Results bar */
+    .resultsbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:20px 0 8px; }
+    .section-title{ font-size:20px; font-weight:900; letter-spacing:.3px; color:#0b1220; margin:0; }
+    .right-tools{ display:flex; align-items:center; gap:10px; }
+
+    /* Checkbox + select */
+    .check-inline{
+      display:flex; align-items:center; gap:10px; user-select:none;
+      background:#ffffff; border:1px solid #dbe6ff; padding:6px 10px; border-radius:12px;
+      box-shadow:0 4px 12px rgba(37,99,235,.08);
+    }
+    .check-inline span{ font-size:13.5px; font-weight:800; color:#0f172a; letter-spacing:.3px; }
+    .check-inline input{ width:16px; height:16px; }
+    .threshold{
+      height:34px; border:1px solid #dbe6ff; border-radius:10px; padding:0 10px; font-weight:800; color:#0f172a;
+      background:#fff; outline:0;
+    }
+
+    .empty{border:1px dashed var(--border); border-radius:16px; padding:24px; color:var(--muted); text-align:center}
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="topbar">
+      <div class="title">
+        <svg class="printer-ico" viewBox="0 0 24 24" fill="none">
+          <path d="M7 8V4h10v4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="3" y="8" width="18" height="8" rx="2" stroke="#0ea5e9" stroke-width="2"/>
+          <path d="M7 16v4h10v-4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="17.5" cy="12" r="1" fill="#10b981"/>
+        </svg>
+        <h1 class="title-text">Printers Supplies</h1>
+      </div>
+
+      <nav class="user-menu">
+        <span class="um-muted">Signed in as</span>
+        <strong>{{ username }}</strong>
+        <span class="um-sep">·</span><a href="/account">Edit Account</a>
+        <span class="um-sep">·</span><a href="/logout">Logout</a>
+      </nav>
+    </div>
+
+    <!-- QUERY CARD -->
+    <div class="card sticky-card">
+      <form id="f" class="toolbar" autocomplete="off">
+        <label class="switch">
+          <input type="checkbox" id="listmode" checked>
+          <span>List mode</span>
+        </label>
+
+        <div id="singleInputs" class="row" style="display:none">
+          <div class="stack w-280">
+            <label>IP</label>
+            <input id="ip" placeholder="192.168.1.100">
+          </div>
+        </div>
+
+        <div id="listInputs" class="row">
+          <div class="stack w-420">
+            <label>IPs (one per line or comma-separated)</label>
+            <textarea id="ips" placeholder="192.168.1.100
+192.168.1.101"></textarea>
+          </div>
+        </div>
+
+        <button id="btnQ" class="btn btn-primary">Query</button>
+        <button id="btnXLSX" type="button" class="btn btn-secondary">Export to Excel</button>
+      </form>
+    </div>
+
+    <div class="resultsbar">
+      <h2 class="section-title">Results</h2>
+      <div class="right-tools">
+        <label class="check-inline">
+          <input id="onlyLow" type="checkbox">
+          <span>Show only below</span>
+        </label>
+        <select id="threshold" class="threshold">
+          <option value="10" selected>10%</option>
+          <option value="15">15%</option>
+          <option value="20">20%</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:10px">
+      <div class="stack" style="flex:1">
+        <label>Search</label>
+        <input id="filter" placeholder="Filter by IP, Printer or Model">
+      </div>
+    </div>
+
+    <div id="out" class="empty">No data yet. Run a query to see results.</div>
+    <div id="extras"></div>
+      <!-- Toast container -->
+  <div class="toast-container" id="toasts"></div>
+
+  <script>
+    // ====== Utils ======
+    function pctColor(p){ if(p<0) return '#cbd5e1'; if(p>=50) return '#16a34a'; if(p>=20) return '#f59e0b'; return '#ef4444'; }
+
+    // ====== Toast con icono + cerrar ======
+    function showToast(msg, type='warn', ms=2600){
+      const icons = {
+        success: '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M20 7L9 18l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        warn:    '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.29 3.86l-8.49 14.7A2 2 0 003.53 21h16.94a2 2 0 001.73-3l-8.49-14.7a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        error:   '<svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M15 9l-6 6m0-6l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      };
+      const box = document.getElementById('toasts');
+      const el = document.createElement('div');
+      el.className = 'toast ' + (type||'');
+      el.innerHTML = `<div class="row">
+          ${icons[type] || icons.warn}
+          <div class="msg">${msg}</div>
+          <button class="close" aria-label="Close">×</button>
+        </div>`;
+      box.appendChild(el);
+      requestAnimationFrame(()=> el.classList.add('show'));
+      const kill = ()=>{ el.classList.remove('show'); setTimeout(()=> el.remove(), 180); };
+      el.querySelector('.close').addEventListener('click', kill);
+      setTimeout(kill, ms);
+    }
+
+    // ====== Estado global ======
+    const state = { rows:[], sortKey:'ip', sortDir:'asc', filter:'', onlyLow:false, threshold:10 };
+
+    const listmode = document.getElementById('listmode');
+    const singleInputs = document.getElementById('singleInputs');
+    const listInputs = document.getElementById('listInputs');
+    listmode.addEventListener('change', ()=>{
+      const on = listmode.checked;
+      singleInputs.style.display = on ? 'none' : 'flex';
+      listInputs.style.display   = on ? 'flex' : 'none';
+    });
+
+    const cbLow = document.getElementById('onlyLow');
+    const selTh = document.getElementById('threshold');
+    cbLow.addEventListener('change', ()=>{ state.onlyLow = !!cbLow.checked; renderTable(); });
+    selTh.addEventListener('change', ()=>{
+      const v = parseInt(selTh.value, 10);
+      state.threshold = isNaN(v) ? 10 : v;
+      renderTable();
+    });
+
+    // ====== Render tabla ======
+    function valueHTML(item){
+      if(!item) return '';
+      if(item.status){
+        const good = String(item.status).toLowerCase()==='ok';
+        return `<span class="pill ${good?'ok':'bad'}">${item.status}</span>`;
+      }
+      const p = (typeof item.percent==='number' && item.percent>=0) ? item.percent : -1;
+      if(p<0) return '';
+      const w = Math.max(0, Math.min(100, p));
+      const badge = (p <= 10) ? `<span class="badge alert">ALERT</span>` : '';
+      return `<div class="muted" style="margin-bottom:4px;display:flex;gap:8px;align-items:center">
+                ${p.toFixed(1)}% ${badge}
+              </div>
+              <div class="bar"><div style="width:${w}%;background:${pctColor(p)}"></div></div>`;
+    }
+
+    function pickBest(items, category){
+      const arr = items.filter(it => it.category === category);
+      if(!arr.length) return null;
+      return arr.slice().sort((a,b)=>{
+        const pa = (typeof a.percent==='number')?a.percent:-1;
+        const pb = (typeof b.percent==='number')?b.percent:-1;
+        return pb-pa;
+      })[0];
+    }
+
+    function buildRow(d){
+      const items = d.items || [];
+      const model = (d.model||'').toUpperCase();
+      const toner   = pickBest(items,'toner');
+      const drum    = pickBest(items,'drum');
+      const tr      = pickBest(items,'transfer_roller');
+      const fuser   = pickBest(items,'fuser');
+      const waste   = pickBest(items,'waste_toner');
+      const beltcl  = pickBest(items,'belt_cleaner');
+
+      let trR7 = null, sbtr = null;
+      if(tr){ if(model==='B8155') sbtr = tr; else trR7 = tr; }
+
+      const bi = (typeof d.black_impressions === 'number' && d.black_impressions >= 0) ? d.black_impressions : -1;
+
+      return {
+        raw: d,
+        sort: {
+          ip: (d.ip||'').toLowerCase(),
+          printer: (d.printer_name||'').toLowerCase(),
+          model: (d.model||'').toLowerCase(),
+          black: bi,
+          toner: (toner&&toner.percent)||-1,
+          drum: (drum&&drum.percent)||-1,
+          tr_r7: (trR7&&trR7.percent)||-1,
+          fuser: (fuser&&fuser.percent)||-1,
+          waste: (waste&&waste.percent)||-1,
+          beltcl: (beltcl&&beltcl.percent)||-1,
+          sbtr: (sbtr&&sbtr.percent)||-1,
+        }
+      };
+    }
+
+    function filteredRows(){
+      const f = state.filter.trim().toLowerCase();
+      let rows = state.rows;
+      if(f){
+        rows = rows.filter(r=> r.sort.ip.includes(f) || r.sort.printer.includes(f) || r.sort.model.includes(f));
+      }
+      if(state.onlyLow){
+        rows = rows.filter(r => rowIsBelowThreshold(r.raw));
+      }
+      return rows;
+    }
+
+    function rowIsBelowThreshold(d){
+      const items = d.items || [];
+      const KEYS = ['toner','drum','transfer_roller','fuser','waste_toner','belt_cleaner'];
+      const T = Number(state.threshold) || 10;
+      for(const k of KEYS){
+        const it = pickBest(items, k);
+        if(it && typeof it.percent==='number' && it.percent>=0 && it.percent <= T){
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function renderTable(){
+      const out=document.getElementById('out');
+      const rows1 = filteredRows();
+      const rows2 = rows1.slice().sort((a,b)=>{
+        const dir = state.sortDir === 'asc' ? 1 : -1;
+        const va = a.sort[state.sortKey];
+        const vb = b.sort[state.sortKey];
+        if(typeof va === 'string' || typeof vb === 'string'){
+          return String(va).localeCompare(String(vb)) * dir;
+        }
+        return ((va||0) - (vb||0)) * dir;
+      });
+
+      if(!rows2.length){
+        out.className='empty';
+        out.innerHTML = 'No data yet. Run a query to see results.';
+        return;
+      }
+
+      const htmlRows = rows2.map(r=>{
+        const d=r.raw;
+        const model=(d.model||'').toUpperCase();
+        const toner=pickBest(d.items,'toner');
+        const drum=pickBest(d.items,'drum');
+        const tr=pickBest(d.items,'transfer_roller');
+        const fuser=pickBest(d.items,'fuser');
+        const waste=pickBest(d.items,'waste_toner');
+        const beltcl=pickBest(d.items,'belt_cleaner');
+        let trR7=null,sbtr=null;
+        if(tr){ if(model==='B8155') sbtr=tr; else trR7=tr; }
+        const bi=(typeof d.black_impressions==='number'&&d.black_impressions>=0)?d.black_impressions:'N/A';
+        return `<tr>
+          <td>${d.ip||''}</td>
+          <td>${(d.printer_name||'').trim()||'(unnamed)'}</td>
+          <td>${d.model||''}</td>
+          <td>${bi}</td>
+          <td>${valueHTML(toner)}</td>
+          <td>${valueHTML(drum)}</td>
+          <td>${valueHTML(trR7)}</td>
+          <td>${valueHTML(fuser)}</td>
+          <td>${valueHTML(waste)}</td>
+          <td>${valueHTML(beltcl)}</td>
+          <td>${valueHTML(sbtr)}</td>
+        </tr>`;
+      }).join('');
+
+      out.className='';
+      out.innerHTML=`<div class="tableWrap">
+        <table>
+          <thead><tr>
+            <th>IP</th><th>Printer</th><th>Model</th><th>Black Impressions</th>
+            <th>Toner</th><th>Drum</th><th>Transfer Roller R7</th><th>Fuser R8</th>
+            <th>Waste Toner</th><th>Transfer Belt Cleaner</th><th>Second Bias Transfer Roll</th>
+          </tr></thead>
+          <tbody>${htmlRows}</tbody>
+        </table>
+      </div>`;
+    }
+
+    document.getElementById('filter').addEventListener('input', (e)=>{
+      state.filter = e.target.value || '';
+      renderTable();
+    });
+
+    async function q(url){
+      try{ const r=await fetch(url); return await r.json(); }
+      catch(e){ console.error(e); return {error:'Network error'}; }
+    }
+
+    function buildQS(extra){ return new URLSearchParams({...extra}).toString(); }
+
+    // ====== Submit del form ======
+    document.getElementById('f').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+
+      document.querySelectorAll('.query-status-msg').forEach(el => el.remove());
+
+      const wrap=document.createElement('div');
+      wrap.className='query-status-msg';
+      wrap.style.cssText='margin-top:10px;text-align:center;font-weight:700;color:#0f172a;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;';
+      const topRow=document.createElement('div');
+      topRow.style.cssText='display:flex;align-items:center;gap:8px;';
+      const spinner=document.createElement('div');
+      spinner.style.cssText='width:16px;height:16px;border:3px solid #cbd5e1;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite;';
+      const label=document.createElement('div');
+      label.textContent='Starting query...';
+      topRow.appendChild(spinner);
+      topRow.appendChild(label);
+      const bar=document.createElement('div');
+      bar.style.cssText='width:100%;background:#e2e8f0;border-radius:10px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.1)';
+      const inner=document.createElement('div');
+      inner.style.cssText='height:10px;width:0;background:#2563eb;transition:width .15s ease';
+      bar.appendChild(inner);
+      wrap.appendChild(topRow);
+      wrap.appendChild(bar);
+      document.querySelector('.sticky-card').appendChild(wrap);
+
+      let total=1, ips=[];
+      if(listmode.checked){
+        const ipsTxt=document.getElementById('ips').value||'';
+        ips=ipsTxt.split(/[,\n\r\t\s]+/).map(s=>s.trim()).filter(Boolean);
+        total=ips.length;
+        if(!total){ showToast('Enter at least one IP.','error'); wrap.remove(); return; }
+      } else {
+        const ip=document.getElementById('ip').value.trim();
+        if(!ip){ showToast('Enter an IP.','error'); wrap.remove(); return; }
+        ips=[ip];
+      }
+
+      let pct=0;
+      const anim=setInterval(()=>{
+        if(pct<95) pct=Math.min(95,pct+Math.random()*5);
+        inner.style.width=pct+'%';
+        label.textContent=`Querying ${ips.length>1?ips.length+' printers':'printer'}... ${Math.round(pct)}%`;
+      },400);
+
+      try{
+        let data;
+        if(listmode.checked){
+          const qs=buildQS({ips:ips.join(',')});
+          data=await q(`/api/supplies_list?${qs}`);
+        } else {
+          const qs=buildQS({ip:ips[0]});
+          data=await q(`/api/supplies?${qs}`);
+        }
+        clearInterval(anim);
+        spinner.remove();
+        inner.style.width='100%';
+        label.textContent=`✅ Completed ${ips.length} ${ips.length===1?'printer':'printers'} successfully`;
+        bar.remove();
+        wrap.style.marginTop='12px';
+        wrap.style.fontSize='14px';
+        wrap.style.color='#166534';
+        if(data.error){ showToast(data.error,'error'); return; }
+        const arr=Array.isArray(data.results)?data.results:[data];
+        state.rows=arr.map(buildRow);
+        renderTable();
+      }catch(err){
+        clearInterval(anim);
+        wrap.remove();
+        showToast('Query failed','error');
+      }
+    });
+
+    // ====== Exportar a Excel ======
+    document.getElementById('btnXLSX').addEventListener('click', ()=>{
+      if(!state.rows||state.rows.length===0){ showToast('Run a query first.','warn'); return; }
+      const visible=filteredRows();
+      if(!visible||visible.length===0){ showToast('No data to export','warn'); return; }
+
+      const pct_max=state.onlyLow?state.threshold:'';
+      const text=state.filter||'';
+      if(listmode.checked){
+        const ipsTxt=document.getElementById('ips').value||'';
+        const ips=ipsTxt.split(/[,\n\r\t\s]+/).map(s=>s.trim()).filter(Boolean);
+        if(!ips.length){ showToast('Enter at least one IP.','error'); return; }
+        const qs=new URLSearchParams({ips:ips.join(','),pct_max,text}).toString();
+        window.location=`/api/export_xlsx_list_pivot?${qs}`;
+      } else {
+        const ip=(document.getElementById('ip').value||'').trim();
+        if(!ip){ showToast('Enter an IP.','error'); return; }
+        const qs=new URLSearchParams({ip,pct_max,text}).toString();
+        window.location=`/api/export_xlsx_pivot?${qs}`;
+      }
+    });
+  </script>
+</body>
+</html>
+

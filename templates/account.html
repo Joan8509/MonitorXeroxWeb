@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Account · Supplies</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#ffffff;--text:#0f172a;--muted:#64748b;--border:#e5e7eb;--accent:#2563eb;}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .container{max-width:620px;margin:8vh auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(2,6,23,.06)}
+    h1{margin:0 0 12px 0;font-size:22px}
+    p.muted{color:var(--muted);margin:0 0 14px 0}
+    label{display:block;font-size:13px;color:var(--muted);margin:8px 0 6px}
+    input{width:100%;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px;background:#fff;color:#0f172a}
+    .btn{margin-top:14px;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .row{display:flex;gap:16px;flex-wrap:wrap}
+    .grow{flex:1}
+    .linkbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    a{color:var(--accent);text-decoration:none}
+    .pw{position:relative} .pw input{padding-right:40px}
+    .pwbtn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;cursor:pointer;color:#64748b;font-size:16px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="linkbar">
+      <a href="/">← Back to app</a>
+      <div><a href="/logout">Logout</a></div>
+    </div>
+    <div class="card">
+      <h1>Account</h1>
+      <p class="muted">Update your username and password.</p>
+
+      <form method="post" action="/account">
+        <div class="row">
+          <div class="grow">
+            <label>Username</label>
+            <input name="username" placeholder="your.name">
+          </div>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label>Current password</label>
+            <div class="pw">
+              <input id="current_password" name="current_password" type="password" placeholder="••••••••" required>
+              <button type="button" id="pwToggleCur" class="pwbtn" title="Show">👁</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="grow">
+            <label>New password (optional)</label>
+            <div class="pw">
+              <input id="new_password" name="new_password" type="password" placeholder="min. 6 characters">
+              <button type="button" id="pwToggleNew" class="pwbtn" title="Show">👁</button>
+            </div>
+          </div>
+          <div class="grow">
+            <label>Confirm new password</label>
+            <div class="pw">
+              <input id="confirm_password" name="confirm_password" type="password" placeholder="repeat new password">
+              <button type="button" id="pwToggleCnf" class="pwbtn" title="Show">👁</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn" type="submit">Save changes</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
