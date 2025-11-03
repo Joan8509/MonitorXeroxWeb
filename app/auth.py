@@ -3,18 +3,14 @@ from functools import wraps
 from flask import session, redirect, url_for, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# ---------------- CONFIG ----------------
 AUTH_DB_PATH = os.getenv("AUTH_DB_PATH", "auth.db")
 
-# ---------------- DB CORE ----------------
 def _db():
     conn = sqlite3.connect(AUTH_DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-# ---------------- INIT / ADMIN ----------------
 def init_auth_db():
-    """Crea la tabla de usuarios si no existe."""
     with _db() as conn:
         conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -25,50 +21,31 @@ def init_auth_db():
         );""")
 
 def bootstrap_admin_from_env():
-    """Crea usuario admin desde variables de entorno si existen."""
     user = os.getenv("ADMIN_USER")
     pw = os.getenv("ADMIN_PASSWORD")
     if user and pw:
         with _db() as conn:
-            row = conn.execute("SELECT 1 FROM users WHERE username=?", (user.strip(),)).fetchone()
+            row = conn.execute("SELECT 1 FROM users WHERE username=?", (user,)).fetchone()
             if not row:
                 conn.execute(
                     "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                    (user.strip(), generate_password_hash(pw))
+                    (user, generate_password_hash(pw))
                 )
                 print(f"[bootstrap] Created admin user '{user}' from ENV")
 
-# ---------------- CRUD USERS ----------------
-def create_user(username: str, password: str):
-    if not username or not password:
-        return "Username and password are required."
-    if len(password) < 6:
-        return "Password must be at least 6 characters."
-    try:
-        with _db() as conn:
-            conn.execute(
-                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                (username.strip(), generate_password_hash(password)),
-            )
-        return None
-    except sqlite3.IntegrityError:
-        return "Username already exists."
-
-def verify_user(username: str, password: str) -> bool:
+def verify_user(username, password):
     with _db() as conn:
-        cur = conn.execute("SELECT id, password_hash FROM users WHERE username = ?", (username.strip(),))
-        row = cur.fetchone()
+        row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
         if not row:
             return False
         return check_password_hash(row["password_hash"], password)
 
-def find_user_id(username: str):
+def find_user_id(username):
     with _db() as conn:
-        cur = conn.execute("SELECT id FROM users WHERE username = ?", (username.strip(),))
-        row = cur.fetchone()
+        row = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
         return int(row["id"]) if row else None
 
-def update_username(user_id: int, new_username: str):
+def update_username(user_id, new_username):
     try:
         with _db() as conn:
             conn.execute("UPDATE users SET username=? WHERE id=?", (new_username.strip(), user_id))
@@ -76,19 +53,17 @@ def update_username(user_id: int, new_username: str):
     except sqlite3.IntegrityError:
         return "Username already exists."
 
-def update_password(user_id: int, new_password: str):
+def update_password(user_id, new_password):
     with _db() as conn:
         conn.execute("UPDATE users SET password_hash=? WHERE id=?",
                      (generate_password_hash(new_password), user_id))
 
-# ---------------- LOGIN REQUIRED ----------------
-def login_required(endpoint_name: str = ""):
-    """Protege rutas que requieren autenticación."""
+def login_required(endpoint_name=""):
     def deco(fn):
         @wraps(fn)
         def _wrap(*args, **kwargs):
             if not session.get("user_id"):
-                if request.path.startswith("/api/") or request.headers.get("Accept","").startswith("application/json"):
+                if request.path.startswith("/api/") or request.headers.get("Accept", "").startswith("application/json"):
                     return jsonify({"error": "Unauthorized"}), 401
                 nxt = request.full_path if request.query_string else request.path
                 return redirect(url_for("routes.login", next=nxt))
