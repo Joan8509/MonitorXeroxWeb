@@ -1,0 +1,5 @@
+{
+  "requestverificationtoken": "paste-requestverificationtoken-here",
+  "cookie": "paste-cookie-header-here",
+  "referer": "https://office.services.xerox.com/FMP/Printers/AllPrinter"
+}

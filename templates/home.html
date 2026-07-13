@@ -1,65 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="{{ current_lang }}">
 <head>
-<meta charset="UTF-8">
-<title>Printers Supplies</title>
-<style>
-:root{--ok:#22c55e;--warn:#eab308;--alert:#ef4444;--muted:#94a3b8;}
-body{font-family:sans-serif;background:#f5f8ff;margin:0;padding:20px;color:#0f172a;}
-main{max-width:1300px;margin:auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,.1);}
-.badge{padding:2px 8px;border-radius:8px;color:#fff;font-weight:600;font-size:.8rem;}
-.ok{background:var(--ok);} .warn{background:var(--warn);}
-.alert{background:var(--alert);} .muted{background:var(--muted);}
-.progress{height:8px;width:70px;background:#eee;border-radius:4px;overflow:hidden;}
-.bar{height:100%;border-radius:4px;}
-</style>
+  <meta charset="utf-8">
+  <title>Printers Supplies - Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-<main>
-<h2>🖨️ Printers Supplies</h2>
-<form id="queryForm" method="post" action="/api/supplies_list">
-<textarea name="ips" id="ips" rows="3" style="width:100%"></textarea><br>
-<label><input type="checkbox" name="list" checked> LIST MODE</label>
-<button type="submit">Query</button>
-</form>
-<p id="statusText"></p>
-<table border="0" cellspacing="0" cellpadding="6" width="100%">
-<thead>
-<tr>
-<th>IP</th><th>Printer</th><th>Model</th><th>Black Impressions</th>
-<th>Toner</th><th>Drum</th><th>Transfer Roller R7</th><th>Fuser R8</th>
-<th>Waste Toner</th><th>Transfer Belt Cleaner</th><th>Second Bias Transfer Roll</th>
-</tr></thead>
-<tbody id="resultBody"></tbody>
-</table>
-</main>
-<script>
-const form=document.getElementById("queryForm");
-form.onsubmit=async e=>{
- e.preventDefault();
- const txt=document.getElementById("ips").value;
- const fd=new URLSearchParams(); fd.set("ips",txt); fd.set("list","on");
- const res=await fetch("/api/supplies_list",{method:"POST",body:fd});
- const data=await res.json();
- const body=document.getElementById("resultBody");
- body.innerHTML="";
- if(!data.results||!data.results.length){document.getElementById("statusText").innerText="No results.";return;}
- data.results.forEach(r=>{
-   const tr=document.createElement("tr");
-   const tds=[r.ip,r.printer_name||"",r.model||"",r.black_impressions>0?r.black_impressions.toLocaleString():"N/A"];
-   tds.forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
-   const order=["toner","drum","transfer_roller","fuser","waste_toner","belt_cleaner","second_bias_transfer_roll"];
-   const dict={};r.items.forEach(i=>dict[i.category]=i);
-   order.forEach(c=>{
-     const it=dict[c];const td=document.createElement("td");
-     if(!it){td.textContent="N/A";tr.appendChild(td);return;}
-     const val=it.display||"N/A";const col=it.color||"muted";
-     td.innerHTML=`<span class="badge ${col}">${val}</span>`;tr.appendChild(td);
-   });
-   body.appendChild(tr);
- });
- document.getElementById("statusText").innerText=`✅ Completed ${data.results.length} printer(s)`;
-};
-</script>
+  <header style="padding:10px 16px; background:#1e293b; color:white; display:flex; justify-content:space-between; align-items:center;">
+    <div style="font-weight:700;">Printers Supplies</div>
+    <div>
+      <span style="margin-right:12px; font-size:14px;">{{ username }}</span>
+      <a href="{{ url_for('auth.set_language', lang='en') }}" style="color:#e5e7eb; font-size:14px; margin-right:8px;">EN</a>
+      <a href="{{ url_for('auth.set_language', lang='es') }}" style="color:#e5e7eb; font-size:14px; margin-right:12px;">ES</a>
+      <a href="{{ url_for('auth.logout') }}" style="color:#e5e7eb; font-size:14px;">{{ t("logout") }}</a>
+    </div>
+  </header>
+
+  <main style="padding:20px;">
+    <h2>{{ t("dashboard_phase") }}</h2>
+    <p>{{ t("dashboard_placeholder") }}</p>
+  </main>
 </body>
 </html>

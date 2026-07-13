@@ -1,0 +1,5 @@
+# Put one Xerox serial number per line.
+# Copy this file to cloud_serials.txt and replace these examples.
+YEQ142895
+HQH823013
+YEQ142901

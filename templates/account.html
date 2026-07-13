@@ -1,24 +1,52 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="{{ current_lang }}">
 <head>
-<meta charset="UTF-8">
-<title>Account</title>
-<style>
-body{font-family:sans-serif;background:#f0f4ff;padding:30px;}
-form{background:white;padding:30px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,.1);max-width:400px;margin:auto;}
-input{width:100%;padding:8px;margin:8px 0;}
-button{background:#2563eb;color:#fff;border:none;padding:10px;width:100%;border-radius:6px;}
-</style>
+  <meta charset="utf-8">
+  <title>{{ t("account_settings") }} - Printers Supplies</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-<form method="POST">
-<h2>Account Settings</h2>
-{% if message %}<p style="color:green">{{message}}</p>{% endif %}
-<p>Current user: <b>{{username}}</b></p>
-<input type="text" name="new_username" placeholder="New username">
-<input type="password" name="new_password" placeholder="New password">
-<button type="submit">Update</button>
-<p><a href="/">← Back to Home</a></p>
-</form>
+<div class="container">
+
+  <div class="topbar">
+    <div class="title">
+      <svg class="printer-ico" viewBox="0 0 24 24" fill="none">
+        <path d="M7 8V4h10v4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="3" y="8" width="18" height="8" rx="2" stroke="#0ea5e9" stroke-width="2"/>
+        <path d="M7 16v4h10v-4" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="17.5" cy="12" r="1" fill="#10b981"/>
+      </svg>
+      <h1 class="title-text">Printers Supplies</h1>
+    </div>
+
+    <nav class="user-menu">
+      <span class="um-muted">{{ t("signed_in_as") }}</span> <strong>{{ username }}</strong>
+      <span class="um-sep">·</span><a href="{{ url_for('auth.set_language', lang='en') }}">EN</a>
+      <span class="um-sep">·</span><a href="{{ url_for('auth.set_language', lang='es') }}">ES</a>
+      <span class="um-sep">·</span><a href="{{ url_for('home.home') }}">{{ t("home") }}</a>
+      <span class="um-sep">·</span><a href="{{ url_for('auth.logout') }}">{{ t("logout") }}</a>
+    </nav>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 10px 0;font-size:18px;font-weight:800;">{{ t("account_settings") }}</h2>
+    <p style="margin:0 0 18px 0;font-size:13px;color:#6b7280;">
+      {{ t("account_summary") }}
+    </p>
+
+    <div class="row" style="margin-bottom:14px;">
+      <div class="stack w-280">
+        <label>{{ t("username") }}</label>
+        <input value="{{ username }}" readonly>
+      </div>
+    </div>
+
+    <p style="margin:0;font-size:12px;color:#9ca3af;">
+      {{ t("account_note") }}
+    </p>
+  </div>
+
+</div>
 </body>
 </html>

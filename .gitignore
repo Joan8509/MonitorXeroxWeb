@@ -21,6 +21,11 @@ auth.db
 
 # --- Environment file ---
 .env
+xerox_auth.json
+xerox_headers.txt
+xerox_curl.txt
+cloud_serials.txt
+.cloud_alert_state.json
 
 # --- Compiled / temp files ---
 *.bak
@@ -34,3 +39,22 @@ auth.db
 
 # --- VS Code settings (optional) ---
 .vscode/
+
+# --- Local safe backups ---
+backups/
+# --- Local databases / secrets / binaries ---
+*.db
+*.sqlite
+*.sqlite3
+cloudflared.exe
+public_*.log
+cloudflared_*.log
+codex_app_*.log
+flask*.log
+inventory_fetch.log
+# --- Accidental scratch files ---
+$null
+(x
+Optional[str]
+r.json())
+{

@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Printers Supplies</title>
+  <style>
+    :root{
+      color-scheme:light;
+      --bg:#eef3f9;
+      --panel:#ffffff;
+      --line:#d9e3f0;
+      --line-strong:#c4d3e7;
+      --text:#061226;
+      --muted:#65758d;
+      --soft:#f7faff;
+      --blue:#2563eb;
+      --blue-dark:#1d4ed8;
+      --sky:#0ea5e9;
+      --green:#059669;
+      --red:#dc2626;
+      --amber:#d97706;
+      --ok:#059669;
+      --warn:#d97706;
+      --bad:#dc2626;
+      --shadow:0 18px 46px rgba(15,23,42,.10);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(circle at 96% 4%,rgba(14,165,233,.13),transparent 260px),
+        linear-gradient(180deg,#f8fbff 0,#eef3f9 280px);
+      color:var(--text);
+    }
+    .page{max-width:1500px;margin:0 auto;padding:10px 16px 28px}
+    .hero{
+      margin:0 0 16px;
+      padding:20px 24px;
+      min-height:92px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+      border:1px solid var(--line);
+      border-radius:0 0 22px 22px;
+      background:rgba(255,255,255,.82);
+      box-shadow:0 14px 40px rgba(15,23,42,.07);
+      backdrop-filter:blur(8px);
+    }
+    .brand{display:flex;align-items:center;gap:14px;min-width:0}
+    .brandIcon{
+      width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+      background:#eef6ff;border:1px solid #bad7ff;position:relative;flex:0 0 auto;
+    }
+    .brandIcon::before{
+      content:"";width:21px;height:15px;border:2px solid var(--blue);
+      border-radius:4px;background:#fff;box-shadow:0 -8px 0 -4px #93c5fd;
+    }
+    .brandIcon::after{
+      content:"";position:absolute;width:27px;height:12px;top:19px;
+      border:2px solid var(--blue-dark);border-radius:5px;background:#dbeafe;
+    }
+    .brand h1{margin:0;color:#7aa6f8;font-size:1.9rem;line-height:1;font-weight:900;letter-spacing:0}
+    .brand p{margin:6px 0 0;color:#44546a;font-size:.88rem;font-weight:750}
+    .accountBar{
+      display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+      padding:14px 18px;border:1px solid #cfe0f7;border-radius:18px;background:#fff;
+      color:#475569;font-size:.88rem;box-shadow:0 8px 22px rgba(15,23,42,.04);
+    }
+    .accountBar strong,.accountBar a{color:#174bd7;font-weight:850;text-decoration:none}
+    .accountBar a.active{background:#eaf1ff;border-radius:8px;padding:4px 7px}
+    .divider{color:#a8b5c7;font-weight:800}
+    .tabs{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin:0 0 14px;padding:9px 10px;border:1px solid var(--line);
+      border-radius:16px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.06);
+    }
+    .tabGroup{display:flex;gap:8px;align-items:center}
+    .tab,.clearLink{
+      border:0;background:transparent;color:#475569;font-weight:850;border-radius:10px;
+      padding:10px 14px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;
+    }
+    .tab.active{background:var(--blue);color:#fff;box-shadow:0 10px 20px rgba(37,99,235,.22)}
+    .clearLink:hover,.tab:not(.active):hover{background:#f1f5fb}
+    .lookupCard{
+      border:1px solid var(--line);border-radius:22px;background:#fff;box-shadow:var(--shadow);
+      overflow:hidden;margin-bottom:20px;
+    }
+    .lookupHeader{
+      display:flex;align-items:center;justify-content:space-between;gap:18px;
+      padding:20px 20px 10px;
+    }
+    .sectionTitle{display:flex;align-items:center;gap:12px}
+    .sectionIcon{
+      width:42px;height:42px;border-radius:12px;border:1px solid #bfdbfe;background:#eff6ff;
+      display:grid;place-items:center;color:var(--blue);font-weight:950;
+    }
+    .sectionTitle h2{margin:0;font-size:1.12rem}
+    .readyPill{
+      display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;
+      background:#e0f2fe;border:1px solid #bae6fd;color:#0f3d5e;font-size:.78rem;font-weight:900;
+      text-transform:uppercase;letter-spacing:.04em;
+    }
+    .readyPill::before{content:"";width:9px;height:9px;border-radius:50%;background:#10b981}
+    .lookupBody{border-top:1px solid var(--line);padding:16px 18px 0}
+    .lookupGrid{display:grid;grid-template-columns:minmax(320px,430px) 1fr auto;gap:18px;align-items:end}
+    .field{display:flex;flex-direction:column;gap:7px;min-width:0}
+    .field label{color:#34425a;font-size:.74rem;font-weight:900;text-transform:uppercase;letter-spacing:.09em}
+    textarea,input,select{
+      width:100%;border:1px solid var(--line);border-radius:14px;background:#fff;
+      color:var(--text);font:inherit;outline:none;
+      transition:border-color .16s,box-shadow .16s,background-color .16s;
+    }
+    textarea{
+      height:110px;min-height:90px;resize:vertical;padding:13px 14px;
+      font-family:Consolas,Menlo,monospace;font-size:.92rem;line-height:1.45;
+    }
+    input,select{height:42px;padding:0 13px}
+    textarea:focus,input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+    .actions{display:flex;gap:14px;align-items:center;justify-content:flex-end;padding-bottom:2px}
+    .btn{
+      min-height:42px;border-radius:12px;border:1px solid var(--blue);background:var(--blue);
+      color:#fff;font-weight:900;padding:0 26px;cursor:pointer;text-decoration:none;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      box-shadow:0 14px 26px rgba(37,99,235,.25);
+    }
+    .btn:hover{background:var(--blue-dark);border-color:var(--blue-dark)}
+    .btn.secondary{background:#fff;color:#164bd9;box-shadow:none}
+    .btn.secondary:hover{background:#f8fbff}
+    .inventoryControls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+    .inventoryControls select{height:38px;border-radius:12px;font-size:.88rem}
+    .inventoryControls .btn{min-height:38px;padding:0 14px;white-space:nowrap}
+    .progressPanel{display:none;margin:14px 0 0;padding:11px 12px;border:1px solid #cfe0ff;background:#f6f9ff;border-radius:14px}
+    .lookupCard.loading .progressPanel{display:block}
+    .progressMeta{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;color:#475569;font-size:.86rem;font-weight:800}
+    .progressTrack{height:9px;border-radius:999px;background:#dfe8f5;overflow:hidden}
+    .progressFill{height:100%;width:38%;border-radius:inherit;background:linear-gradient(90deg,var(--blue),var(--sky),var(--blue));background-size:220% 100%;animation:progressSlide 1.05s linear infinite}
+    @keyframes progressSlide{0%{transform:translateX(-115%);background-position:0 0}100%{transform:translateX(270%);background-position:220% 0}}
+    .notice{margin:12px 0 0;border:1px solid #fdba74;background:#fff7ed;color:#9a3412;border-radius:12px;padding:10px 12px;font-size:.9rem}
+    .notice.error{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+    .completeLine{height:28px;display:grid;place-items:center;color:#065f46;font-weight:900;font-size:.88rem}
+    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+    .stat{
+      position:relative;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:16px;
+      padding:17px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 12px 28px rgba(15,23,42,.07);
+    }
+    .stat::after{content:"";position:absolute;right:-26px;top:-34px;width:86px;height:86px;border-radius:50%;background:rgba(37,99,235,.08)}
+    .stat.warn::after{background:rgba(220,38,38,.08)}
+    .stat.green::after{background:rgba(5,150,105,.10)}
+    .stat.sky::after{background:rgba(14,165,233,.12)}
+    .statIcon{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;border:1px solid #bfdbfe;background:#eff6ff;color:var(--blue);font-weight:950}
+    .stat.warn .statIcon{border-color:#fecaca;background:#fef2f2;color:var(--red)}
+    .stat.green .statIcon{border-color:#bbf7d0;background:#ecfdf5;color:var(--green)}
+    .stat.sky .statIcon{border-color:#bae6fd;background:#f0f9ff;color:#0284c7}
+    .statLabel{font-size:.76rem;text-transform:uppercase;letter-spacing:.08em;color:#5b6b84;font-weight:900}
+    .statValue{font-size:1.65rem;font-weight:950;line-height:1.1;margin-top:3px}
+    .statText{font-size:.82rem;color:#8a97aa;font-weight:800;margin-top:4px}
+    .resultsTop{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:2px 2px 10px}
+    .resultsTop h2{margin:0;font-size:1.45rem}
+    .lowTools{display:flex;align-items:center;gap:10px}
+    .chip{
+      display:flex;align-items:center;gap:9px;min-height:38px;padding:0 13px;border:1px solid #cfe0ff;
+      background:#fff;border-radius:12px;font-weight:900;font-size:.8rem;text-transform:uppercase;
+    }
+    .chip input{width:16px;height:16px;accent-color:var(--blue)}
+    .thresholdSelect{width:84px}
+    .filterBar{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:16px;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+    .filters{display:grid;grid-template-columns:minmax(260px,1fr) 160px 160px;gap:12px;align-items:end}
+    .tableWrap{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:auto;box-shadow:0 12px 28px rgba(15,23,42,.06)}
+    table{border-collapse:separate;border-spacing:0;width:100%;min-width:1120px}
+    th,td{padding:.82rem .9rem;border-bottom:1px solid #e8edf3;text-align:left;vertical-align:middle}
+    th{background:#f7f9fc;font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:#4a566d;position:sticky;top:0;z-index:1;white-space:nowrap}
+    td{font-size:.9rem;color:#1f2937}
+    tbody tr:nth-child(even) td{background:#fbfdff}
+    tbody tr:hover td{background:#eef6ff}
+    #rows tr[data-business],#rows tr[data-address]{cursor:pointer}
+    .locationTip{
+      position:fixed;z-index:50;display:none;max-width:340px;padding:12px 14px;
+      color:#0f172a;background:#fff;border:1px solid #c9d8ee;border-radius:12px;
+      box-shadow:0 18px 42px rgba(15,23,42,.18);font-size:.86rem;line-height:1.4;
+      pointer-events:none;
+    }
+    .locationTip.visible{display:block}
+    .locationTip strong{display:block;margin-bottom:4px;color:#174bd7;font-size:.76rem;text-transform:uppercase;letter-spacing:.08em}
+    .locationTip .muted{color:#64748b}
+    .status{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:.78rem;font-weight:900;border:1px solid transparent;white-space:nowrap}
+    .status.ok{background:#ecfdf3;border-color:#bbf7d0;color:var(--green)}
+    .status.warn{background:#fff7ed;border-color:#fed7aa;color:var(--amber)}
+    .status.critical{background:#fef2f2;border-color:#fecaca;color:var(--red)}
+    .meter{display:flex;align-items:center;gap:8px;min-width:118px}
+    .bar{position:relative;height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;flex:1}
+    .bar>span{display:block;height:100%;border-radius:inherit;transition:width .25s ease}
+    .meter .value{font-size:.8rem;font-weight:900;color:#334155;min-width:34px;text-align:right}
+    .meter.low .bar>span{background:var(--red)}
+    .meter.warn .bar>span{background:var(--amber)}
+    .meter.ok .bar>span{background:var(--green)}
+    .empty{color:var(--muted);text-align:center;padding:42px 24px;font-size:.95rem;background:#fff}
+    .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:.78rem;font-weight:900;background:#eef2f7;color:#475569;white-space:nowrap}
+    @media (max-width: 1050px){
+      .page{padding:0 10px 22px}
+      .hero,.tabs{border-radius:18px}
+      .hero,.resultsTop{flex-direction:column;align-items:flex-start}
+      .accountBar{width:100%}
+      .lookupGrid,.filters,.stats{grid-template-columns:1fr}
+      .actions,.lowTools{justify-content:flex-start}
+    }
+    @media (max-width: 680px){
+      .brand h1{font-size:1.45rem}
+      .tabs{align-items:stretch}
+      .tabGroup{width:100%;overflow:auto}
+      .clearLink{margin-left:auto}
+    }
+
+    /* Mobile adjustments: reduce header footprint and simplify account bar */
+    @media (max-width: 480px){
+      .hero{min-height:64px;padding:10px 12px;border-radius:12px}
+      .brand h1{font-size:1.12rem}
+      .brand p{display:none}
+      .brandIcon{width:36px;height:36px;border-radius:10px}
+      .accountBar{padding:6px 8px;font-size:.82rem;gap:8px}
+      /* hide language and edit links on small screens, keep username and logout */
+      .accountBar a{display:none}
+      .accountBar a[href^="/logout"]{display:inline-block}
+      .accountBar .divider{display:none}
+      .tabs{padding:8px}
+      .lookupGrid{grid-template-columns:1fr;align-items:stretch}
+      textarea{height:90px}
+      .lookupHeader{padding:12px 12px 8px}
+      .lookupBody{padding:12px}
+      .stats{grid-template-columns:1fr 1fr}
+      .stat{padding:12px}
+      .resultsTop{flex-direction:column;align-items:flex-start;gap:10px}
+      .filterBar{padding:12px}
+      .tableWrap{overflow:auto}
+      table{min-width:820px}
+      th,td{font-size:.82rem;padding:.6rem}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="brand">
+        <div class="brandIcon" aria-hidden="true"></div>
+        <div>
+          <h1>Printers Supplies</h1>
+          <p>Supply monitoring and fleet health overview</p>
+        </div>
+      </div>
+      <div class="accountBar">
+        <span>Signed in as <strong><!-- CLOUD_USERNAME -->administrator<!-- /CLOUD_USERNAME --></strong></span>
+        <span class="divider">|</span>
+        <a href="/language/en?next=/cloud" class="<!-- CLOUD_LANG_EN -->">EN</a>
+        <span class="divider">|</span>
+        <a href="/language/es?next=/cloud" class="<!-- CLOUD_LANG_ES -->">ES</a>
+        <span class="divider">|</span>
+        <a href="/account">Edit Account</a>
+        <span class="divider">|</span>
+        <a href="/logout">Logout</a>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Dashboard sections">
+      <div class="tabGroup">
+        <a class="tab active" href="#lookup">Lookup</a>
+        <a class="tab" href="#summary">Summary</a>
+        <a class="tab" href="#results">Results</a>
+      </div>
+      <div class="tabGroup">
+        <span class="summary">Showing <strong id="countValue">0</strong> devices<!-- CLOUD_LIMIT --></span>
+        <a class="clearLink" href="/cloud">Clear</a>
+      </div>
+    </nav>
+
+    <section class="lookupCard" id="lookup">
+      <div class="lookupHeader">
+        <div class="sectionTitle">
+          <div class="sectionIcon">Q</div>
+          <h2>Supply Lookup</h2>
+        </div>
+        <div class="readyPill">Ready</div>
+      </div>
+      <div class="lookupBody">
+        <form class="lookupGrid" id="serialSearchForm" method="get" action="/cloud">
+          <div class="field">
+            <label for="serials">Serial numbers</label>
+            <textarea id="serials" name="serials" placeholder="YEQ141833&#10;YEQ142895"></textarea>
+            <div class="inventoryControls">
+              <select id="inventoryLocation" aria-label="Inventory location">
+                <option value="__all__">All fleet locations</option>
+              </select>
+              <button id="loadInventoryBtn" class="btn secondary" type="button">Load Inventory Selection</button>
+            </div>
+            <div id="loadInventoryDebug" style="margin-top:10px;font-size:.92rem;color:#1d4ed8;display:none;white-space:pre-wrap"></div>
+          </div>
+          <div></div>
+          <div class="actions">
+            <button class="btn" type="submit">Query</button>
+            <a class="btn secondary" href="/cloud">Clear</a>
+          </div>
+        </form>
+        <div class="progressPanel" id="searchProgress" aria-live="polite">
+          <div class="progressMeta">
+            <span>Searching devices...</span>
+            <span>Contacting Xerox Cloud</span>
+          </div>
+          <div class="progressTrack"><div class="progressFill"></div></div>
+        </div>
+        <!-- CLOUD_MISSING_NOTICE -->
+        <div class="completeLine">Ready to query serial numbers</div>
+      </div>
+    </section>
+
+    <section class="stats" id="summary">
+      <div class="stat">
+        <div class="statIcon">P</div>
+        <div>
+          <div class="statLabel">Total printers</div>
+          <div class="statValue" id="totalPrinters">0</div>
+          <div class="statText">Total in current query</div>
+        </div>
+      </div>
+      <div class="stat warn">
+        <div class="statIcon">!</div>
+        <div>
+          <div class="statLabel">Low supplies</div>
+          <div class="statValue" id="lowSupplies">0</div>
+          <div class="statText">Supplies requiring attention</div>
+        </div>
+      </div>
+      <div class="stat green">
+        <div class="statIcon">M</div>
+        <div>
+          <div class="statLabel">Model types</div>
+          <div class="statValue" id="modelTypes">0</div>
+          <div class="statText">Unique printer models detected</div>
+        </div>
+      </div>
+      <div class="stat sky">
+        <div class="statIcon">T</div>
+        <div>
+          <div class="statLabel">Last update</div>
+          <div class="statValue" id="lastUpdate">--:--</div>
+          <div class="statText">Local browser time</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="results">
+      <div class="resultsTop">
+        <h2>Results</h2>
+        <div class="lowTools">
+          <label class="chip">
+            <input id="lowOnly" type="checkbox" />
+            <span>Show only below</span>
+          </label>
+          <select id="threshold" class="thresholdSelect">
+            <option value="10">10%</option>
+            <option value="15" selected>15%</option>
+            <option value="20">20%</option>
+            <option value="30">30%</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filterBar">
+        <div class="filters">
+          <div class="field">
+            <label for="searchInput">Search</label>
+            <input id="searchInput" placeholder="Filter by serial, IP, name, or model" />
+          </div>
+          <div class="field">
+            <label for="modelFilter">Model</label>
+            <select id="modelFilter">
+              <option value="all">All</option>
+              <option value="B415">B415</option>
+              <option value="B7135">B7135</option>
+              <option value="B8155">B8155</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter">
+              <option value="all">All</option>
+              <option value="OK">OK</option>
+              <option value="WARN">WARN</option>
+              <option value="CRITICAL">CRITICAL</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="tableWrap">
+        <table id="cloudTable">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Serial</th>
+              <th>IP</th>
+              <th>Toner</th>
+              <th>Drum</th>
+              <th>Fuser</th>
+              <th>Transfer</th>
+              <th>Transfer Belt Cleaner</th>
+              <th>Second Bias Transfer Roll</th>
+              <th>Waste Toner Container</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="11" class="empty">Enter serial numbers and press Search to load supplies.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div id="locationTip" class="locationTip" role="status" aria-live="polite"></div>
+
+  <script>
+    const currentPath = window.location.pathname.toLowerCase();
+    const staticPreview =
+      window.location.protocol === 'file:' ||
+      currentPath.endsWith('/templates/cloud.html') ||
+      currentPath.endsWith('/cloud.html');
+    const appBaseUrl = staticPreview ? 'http://127.0.0.1:5001' : '';
+    const inventoryEndpoint = '/cloud/inventory_serials';
+    const cloudUrl = '/cloud';
+    <!-- CLOUD_BOOTSTRAP -->
+
+    document.querySelectorAll('a[href^="/"]').forEach(function (link) {
+      link.setAttribute('href', appBaseUrl + link.getAttribute('href'));
+    });
+    document.getElementById('serialSearchForm').setAttribute('action', cloudUrl);
+
+    function parsePercent(value) {
+      if (value === null || value === undefined || value === '') return null;
+      const n = Number(String(value).replace(/[^0-9.-]/g, ''));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function visibleRows() {
+      return Array.from(document.querySelectorAll('#rows tr')).filter(function (row) {
+        return row.cells.length > 1 && row.style.display !== 'none';
+      });
+    }
+
+    function refreshSummary() {
+      const rows = visibleRows();
+      const models = new Set();
+      let lowCount = 0;
+      rows.forEach(function (row) {
+        const model = (row.getAttribute('data-model') || '').trim();
+        if (model) models.add(model);
+        const values = [
+          row.getAttribute('data-toner'),
+          row.getAttribute('data-drum'),
+          row.getAttribute('data-fuser'),
+          row.getAttribute('data-transfer'),
+          row.getAttribute('data-transfer-belt-cleaner'),
+          row.getAttribute('data-second-bias-transfer-roll'),
+          row.getAttribute('data-waste-toner')
+        ].map(parsePercent).filter(function (value) {
+          return value !== null && value >= 0;
+        });
+        if (values.some(function (value) { return value <= 15; })) lowCount += 1;
+      });
+
+      document.getElementById('countValue').textContent = String(rows.length);
+      document.getElementById('totalPrinters').textContent = String(rows.length);
+      document.getElementById('lowSupplies').textContent = String(lowCount);
+      document.getElementById('modelTypes').textContent = String(models.size);
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+
+    function applyFilters() {
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      const model = document.getElementById('modelFilter').value;
+      const status = document.getElementById('statusFilter').value;
+      const lowOnly = document.getElementById('lowOnly').checked;
+      const threshold = Number(document.getElementById('threshold').value) || 15;
+      const rows = document.querySelectorAll('#rows tr');
+
+      rows.forEach(function (row) {
+        if (row.cells.length === 1) return;
+
+        const text = row.textContent.toLowerCase();
+        const rowModel = (row.getAttribute('data-model') || '').toUpperCase();
+        const rowStatus = (row.getAttribute('data-status') || '').toUpperCase();
+        const matchesSearch = !search || text.includes(search);
+        const matchesModel = model === 'all' || rowModel === model;
+        const matchesStatus = status === 'all' || rowStatus === status;
+
+        let matchesLow = true;
+        if (lowOnly) {
+          const values = [
+            row.getAttribute('data-toner'),
+            row.getAttribute('data-drum'),
+            row.getAttribute('data-fuser'),
+            row.getAttribute('data-transfer'),
+            row.getAttribute('data-transfer-belt-cleaner'),
+            row.getAttribute('data-second-bias-transfer-roll'),
+            row.getAttribute('data-waste-toner')
+          ].map(parsePercent).filter(function (value) {
+            return value !== null && value >= 0;
+          });
+          matchesLow = values.some(function (value) { return value <= threshold; });
+        }
+
+        row.style.display = matchesSearch && matchesModel && matchesStatus && matchesLow ? '' : 'none';
+      });
+
+      refreshSummary();
+    }
+
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('modelFilter').addEventListener('change', applyFilters);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('lowOnly').addEventListener('change', applyFilters);
+    document.getElementById('threshold').addEventListener('change', applyFilters);
+    const locationTip = document.getElementById('locationTip');
+    function rowLocation(row) {
+      const business = (row.getAttribute('data-business') || '').trim();
+      const address = (row.getAttribute('data-address') || '').trim();
+      const serial = row.cells && row.cells[1] ? row.cells[1].textContent.trim() : '';
+      const ip = row.cells && row.cells[2] ? row.cells[2].textContent.trim() : '';
+      const parts = [];
+      if (business) parts.push(business);
+      if (address && address !== business) parts.push(address);
+      return {
+        title: serial || ip || 'Printer',
+        detail: parts.join('<br>') || 'No location available'
+      };
+    }
+    function moveLocationTip(event) {
+      if (!locationTip || !locationTip.classList.contains('visible')) return;
+      const gap = 14;
+      const rect = locationTip.getBoundingClientRect();
+      let left = event.clientX + gap;
+      let top = event.clientY + gap;
+      if (left + rect.width > window.innerWidth - 10) left = event.clientX - rect.width - gap;
+      if (top + rect.height > window.innerHeight - 10) top = event.clientY - rect.height - gap;
+      locationTip.style.left = Math.max(10, left) + 'px';
+      locationTip.style.top = Math.max(10, top) + 'px';
+    }
+    function showLocationTip(row, event) {
+      if (!locationTip || !row || row.cells.length === 1) return;
+      const loc = rowLocation(row);
+      locationTip.innerHTML = '<strong>Location</strong><div>' + loc.detail + '</div><div class="muted">' + loc.title + '</div>';
+      locationTip.classList.add('visible');
+      moveLocationTip(event);
+    }
+    function hideLocationTip() {
+      if (locationTip) locationTip.classList.remove('visible');
+    }
+    document.getElementById('rows').addEventListener('mouseover', function (event) {
+      const row = event.target.closest('tr');
+      if (row && row.parentElement && row.parentElement.id === 'rows') showLocationTip(row, event);
+    });
+    document.getElementById('rows').addEventListener('mousemove', moveLocationTip);
+    document.getElementById('rows').addEventListener('mouseout', function (event) {
+      const row = event.target.closest('tr');
+      if (!row || !row.contains(event.relatedTarget)) hideLocationTip();
+    });
+    document.getElementById('rows').addEventListener('click', function (event) {
+      const row = event.target.closest('tr');
+      if (row && row.parentElement && row.parentElement.id === 'rows') showLocationTip(row, event);
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') hideLocationTip();
+    });
+    document.getElementById('serialSearchForm').addEventListener('submit', function () {
+      const lookup = document.querySelector('.lookupCard');
+      const button = this.querySelector('button[type="submit"]');
+      this.setAttribute('action', cloudUrl);
+      if (lookup) lookup.classList.add('loading');
+      if (button) button.textContent = 'Querying...';
+    });
+    let inventoryData = window.__INVENTORY_DATA__ || null;
+
+    function setInventoryDebug(message, isError) {
+      const debug = document.getElementById('loadInventoryDebug');
+      if (!debug) return;
+      debug.style.display = message ? 'block' : 'none';
+      debug.style.color = isError ? '#991b1b' : '#1d4ed8';
+      debug.textContent = message || '';
+    }
+
+    function populateInventoryLocations(data) {
+      const select = document.getElementById('inventoryLocation');
+      if (!select || !data || !Array.isArray(data.locations)) return;
+      const current = select.value || '__all__';
+      select.innerHTML = '';
+      const all = document.createElement('option');
+      all.value = '__all__';
+      all.textContent = `All fleet locations (${data.count || 0})`;
+      select.appendChild(all);
+      data.locations.forEach(function (location) {
+        const option = document.createElement('option');
+        option.value = location.name;
+        option.textContent = `${location.name} (${location.count || 0})`;
+        select.appendChild(option);
+      });
+      if (Array.from(select.options).some(function (option) { return option.value === current; })) {
+        select.value = current;
+      }
+    }
+
+    async function loadInventoryData(showErrors) {
+      if (inventoryData) return inventoryData;
+      const response = await fetch(appBaseUrl + inventoryEndpoint, { credentials: 'include' });
+      if (!response.ok) {
+        let errMsg = 'Unable to load inventory locations.';
+        try {
+          const errJson = await response.json();
+          if (errJson && errJson.message) errMsg = errJson.message;
+        } catch (e) {}
+        if (response.status === 401) errMsg = 'Please sign in and try again.';
+        if (showErrors) setInventoryDebug(`Fetch failed: ${response.status} ${response.statusText} -> ${inventoryEndpoint}`, true);
+        throw new Error(errMsg);
+      }
+      const data = await response.json();
+      if (!data || !data.success) throw new Error('Invalid inventory response.');
+      inventoryData = data;
+      populateInventoryLocations(data);
+      return data;
+    }
+
+    document.getElementById('loadInventoryBtn').addEventListener('click', async function () {
+      const textarea = document.getElementById('serials');
+      const select = document.getElementById('inventoryLocation');
+      const button = this;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Loading...';
+      setInventoryDebug('', false);
+      try {
+        const data = await loadInventoryData(true);
+        const selected = select ? select.value : '__all__';
+        let serials = data.serials || [];
+        let label = 'all fleet locations';
+        if (selected && selected !== '__all__') {
+          const location = (data.locations || []).find(function (item) { return item.name === selected; });
+          serials = location ? (location.serials || []) : [];
+          label = selected;
+        }
+        textarea.value = serials.join('\n');
+        setInventoryDebug(`${serials.length} serials loaded from ${label}.`, false);
+      } catch (err) {
+        alert('Unable to load inventory: ' + (err && err.message ? err.message : err));
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+
+    if (inventoryData) {
+      populateInventoryLocations(inventoryData);
+    } else {
+      loadInventoryData(false).catch(function () {});
+    }
+
+    applyFilters();
+  </script>
+</body>
+</html>
+

@@ -1,22 +1,93 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="{{ current_lang }}">
 <head>
-<meta charset="UTF-8">
-<title>Login - Printers Supplies</title>
-<style>
-body{font-family:sans-serif;background:#f0f4ff;display:flex;align-items:center;justify-content:center;height:100vh;}
-form{background:white;padding:30px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,.1);}
-input{width:100%;padding:8px;margin:8px 0;}
-button{background:#2563eb;color:#fff;border:none;padding:10px;width:100%;border-radius:6px;}
-</style>
+  <meta charset="utf-8">
+  <title>{{ t("login_title") }}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../static/styles.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body>
-<form method="POST">
-<h2>🖨️ Printers Supplies</h2>
-{% if error %}<p style="color:red">{{error}}</p>{% endif %}
-<input type="text" name="username" placeholder="Username" required>
-<input type="password" name="password" placeholder="Password" required>
-<button type="submit">Login</button>
-</form>
+
+<body class="login-page">
+  <main class="login-shell" aria-labelledby="login-title">
+    <section class="login-hero" aria-label="System overview">
+      <div class="login-hero-card">
+        <p class="login-hero-eyebrow">Xerox Supplies Monitor</p>
+        <h2>{{ t("fleet_visibility") }}</h2>
+        <p>{{ t("operational_summary") }}</p>
+        <div class="login-stats" aria-hidden="true">
+          <span><strong>B7135</strong> {{ t("ready") }}</span>
+          <span><strong>B415</strong> Online</span>
+          <span><strong>SNMP</strong> {{ t("active") }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-panel {% if error is defined and error %}login-panel-error{% endif %}">
+      <div class="login-brand">
+        <div class="login-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" focusable="false">
+            <path d="M7 8V4h10v4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+            <rect x="4" y="8" width="16" height="8" rx="2" stroke="currentColor" stroke-width="1.9" />
+            <path d="M7 16v4h10v-4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="17" cy="12" r="1" fill="#10b981" />
+          </svg>
+        </div>
+        <div>
+          <p class="login-kicker">{{ t("supplies_monitor") }}</p>
+          <h1 id="login-title">Printers Supplies</h1>
+        </div>
+      </div>
+
+      <div class="login-copy">
+        <h2>{{ t("welcome_back") }}</h2>
+        <p>{{ t("login_intro") }}</p>
+      </div>
+
+      {% if error is defined and error %}
+      <div class="login-error" role="alert">
+        {{ t("incorrect_credentials") }}
+      </div>
+      {% endif %}
+
+      <form class="login-form" method="post" action="{{ url_for('auth.login_post') }}">
+        <div class="field">
+          <label for="username">{{ t("username") }}</label>
+          <input id="username" name="username" required autocomplete="username" placeholder="{{ t("enter_username") }}">
+        </div>
+
+        <div class="field">
+          <label for="password">{{ t("password") }}</label>
+          <div class="password-field">
+            <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="{{ t("enter_password") }}">
+            <button id="togglePass" class="toggle-pass" type="button" aria-label="{{ t("show_password") }}" aria-pressed="false" data-show="{{ t("show_password") }}" data-hide="{{ t("hide_password") }}">
+              {{ t("show_password") }}
+            </button>
+          </div>
+        </div>
+
+        <button class="btn primary login-btn" type="submit">{{ t("sign_in") }}</button>
+      </form>
+
+      <nav class="language-switcher" aria-label="{{ t("language") }}">
+        <span>{{ t("language") }}</span>
+        <a class="{% if current_lang == 'en' %}active{% endif %}" href="{{ url_for('auth.set_language', lang='en') }}">EN</a>
+        <a class="{% if current_lang == 'es' %}active{% endif %}" href="{{ url_for('auth.set_language', lang='es') }}">ES</a>
+      </nav>
+    </section>
+  </main>
+
+  <script>
+    const passInput = document.getElementById("password");
+    const toggle = document.getElementById("togglePass");
+
+    toggle.addEventListener("click", () => {
+      const isHidden = passInput.type === "password";
+      passInput.type = isHidden ? "text" : "password";
+      toggle.textContent = isHidden ? toggle.dataset.hide : toggle.dataset.show;
+      toggle.setAttribute("aria-label", isHidden ? toggle.dataset.hide : toggle.dataset.show);
+      toggle.setAttribute("aria-pressed", String(isHidden));
+    });
+  </script>
 </body>
 </html>
