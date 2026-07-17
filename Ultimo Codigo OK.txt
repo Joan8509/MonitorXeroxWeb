@@ -12,6 +12,38 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, Color
 from openpyxl.utils import get_column_letter
 from openpyxl.formatting.rule import DataBarRule, CellIsRule
+from pathlib import Path
+import pandas as pd
+
+BASE_DIR = Path(__file__).resolve().parent
+INVENTORY_XLSX = BASE_DIR / "Printer Supplies-Count-Inventario(29-3-25) OK.xlsx"
+PRINTER_INFO: Dict[str, Dict[str, str]] = {}
+
+def load_printer_inventory() -> None:
+    """Load printer inventory (Address, Negocio) from Excel into memory."""
+    global PRINTER_INFO
+    try:
+        if not INVENTORY_XLSX.exists():
+            print(f"[INV] Inventory Excel not found: {INVENTORY_XLSX}")
+            PRINTER_INFO = {}
+            return
+        df = pd.read_excel(INVENTORY_XLSX)
+        mapping: Dict[str, Dict[str, str]] = {}
+        for _, row in df.iterrows():
+            ip = str(row.get("IP", "")).strip()
+            if not ip:
+                continue
+            mapping[ip] = {
+                "address": str(row.get("Address", "") or "").strip(),
+                "business": str(row.get("Negocio", "") or "").strip(),
+            }
+        PRINTER_INFO = mapping
+        print(f"[INV] Loaded {len(PRINTER_INFO)} printers from Excel inventory.")
+    except Exception as e:
+        print(f"[INV] Failed to load inventory Excel: {e}")
+        PRINTER_INFO = {}
+
+load_printer_inventory()
 
 app = Flask(__name__)
 
@@ -443,7 +475,7 @@ def _b7135_fuser_status(host: str):
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
         driver.set_page_load_timeout(20)
         driver.get(url)
-        time.sleep(8)  # esperar carga de página
+        time.sleep(6)  # esperar carga de página
         page_source = driver.page_source.lower()
         driver.quit()
 
@@ -461,6 +493,72 @@ def _b7135_fuser_status(host: str):
     print(f"[B7135 Fuser] {host} → {status} (cacheado)")
 
     return status
+
+
+# --------- B7135: Lectura Fuser/Transfer R7 vía interfaz web (con caché) ---------
+_fuser_tr_cache: Dict[str, Tuple[float, Dict[str, str]]] = {}
+
+def _b7135_web_status(host: str) -> Dict[str, str]:
+    """
+    Usa Selenium headless para obtener el estado del Fuser R8 y Transfer Roller R7
+    desde la interfaz web del Xerox B7135.
+    Devuelve {'fuser': 'OK'/'Past end of life', 'transfer_roller': 'OK'/'Past end of life'}.
+    Mantiene un caché de 1 hora para evitar abrir el navegador en cada consulta.
+    """
+    import time
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+
+    now = time.time()
+    if host in _fuser_tr_cache and (now - _fuser_tr_cache[host][0]) < 3600:
+        return _fuser_tr_cache[host][1]
+
+    result = {"fuser": "Unknown", "transfer_roller": "Unknown"}
+    try:
+        url = f"http://{host}/"
+        opts = Options()
+        opts.add_argument("--headless=new")
+        opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-gpu")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--log-level=3")
+        opts.add_argument("--window-size=1920,1080")
+
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opts)
+        driver.set_page_load_timeout(25)
+        driver.get(url)
+
+        # 🔹 Espera dinámica: hasta que aparezca texto "fuser" o "transfer roller"
+        import time
+        start = time.time()
+        page = ""
+        while time.time() - start < 12:  # máximo 12 s
+            page = driver.page_source.lower()
+            if "fuser" in page or "transfer roller" in page or "r7" in page:
+                break
+            time.sleep(1.2)  # revisar cada segundo
+        driver.quit()
+
+        if "fuser r8" in page or "fuser" in page:
+            if any(word in page for word in ("past end of life", "end of life", "replace", "expired", "fin de vida")):
+                result["fuser"] = "Past end of life"
+            else:
+                result["fuser"] = "OK"
+
+        if "transfer roller r7" in page or "transfer roller" in page or "r7" in page:
+            if any(word in page for word in ("past end of life", "end of life", "replace", "expired", "fin de vida")):
+                result["transfer_roller"] = "Past end of life"
+            else:
+                result["transfer_roller"] = "OK"
+
+    except Exception as e:
+        print(f"[B7135 Selenium Error] {host}: {e}")
+
+
+    _fuser_tr_cache[host] = (time.time(), result)
+    return result
 
 
 def _b7135_take_snapshot(host: str):
@@ -511,26 +609,33 @@ def fetch_supplies_generic(ip: str, community: str = DEFAULT_COMMUNITY, timeout:
     life_status = {}
     if model == "B7135":
         try:
-            # Fuser R8: Selenium (visual)
-            fuser_status = _b7135_fuser_status(ip)
+            # Prioridad: leer desde el panel web (caché 1h) para Fuser R8 y Transfer Roller R7
+            web_status = _b7135_web_status(ip)
+            fuser_status = web_status.get("fuser", "Unknown")
+            tr_status = web_status.get("transfer_roller", "Unknown")
         except Exception as e:
-            print(f"[B7135] Error Fuser: {e}")
+            print(f"[B7135] Error leyendo panel web: {e}")
             fuser_status = "Unknown"
-
-        try:
-            # Transfer Roller R7: SNMP alerts
-            alert_status = _cached_life_status_from_alerts(ip, community, timeout)
-            tr_status = alert_status.get("transfer_roller", "Unknown")
-        except Exception as e:
-            print(f"[B7135] Error Transfer Roller: {e}")
             tr_status = "Unknown"
 
+        # Si alguno sigue Unknown, intentar híbrido por SNMP (alertas + OID privado)
+        if fuser_status == "Unknown" or tr_status == "Unknown":
+            try:
+                hybrid = _b7135_r7_r8_status(ip, community, timeout)
+            except Exception as e:
+                print(f"[B7135] Error híbrido R7/R8: {e}")
+                hybrid = {}
+            if fuser_status == "Unknown":
+                fuser_status = hybrid.get("fuser", "Unknown")
+            if tr_status == "Unknown":
+                tr_status = hybrid.get("transfer_roller", "Unknown")
+
         life_status = {
-            "fuser": "END" if "end" in fuser_status.lower() else "OK",
-            "transfer_roller": tr_status
+            "fuser": "END" if "end" in str(fuser_status).lower() else "OK",
+            "transfer_roller": "END" if "end" in str(tr_status).lower() else "OK"
         }
 
-        print(f"[B7135] {ip} -> Fuser={fuser_status}, Transfer Roller={tr_status}")
+        print(f"[B7135 FINAL] {ip} -> Fuser={fuser_status}, Transfer Roller={tr_status}")
 
     # --- Generar lista de items base SNMP ---
     items: List[Dict[str, Any]] = []
@@ -640,6 +745,10 @@ def fetch_supplies_generic(ip: str, community: str = DEFAULT_COMMUNITY, timeout:
     if model == "C415":
         c415_map = _extract_c415(items)
 
+    extra = PRINTER_INFO.get(ip, {})
+    address = extra.get("address", "")
+    business = extra.get("business", "")
+
     return {
         "ip": ip,
         "printer_name": name,
@@ -647,6 +756,8 @@ def fetch_supplies_generic(ip: str, community: str = DEFAULT_COMMUNITY, timeout:
         "black_impressions": black_impr,
         "items": items,
         "c415": c415_map if model == "C415" else {},
+        "address": address,
+        "business": business,
     }
 
 
@@ -1174,6 +1285,8 @@ def home():
 
         <button id="btnQ" class="btn btn-primary">Query</button>
         <button id="btnXLSX" type="button" class="btn btn-secondary">Export to Excel</button>
+        
+
       </form>
     </div>
 
@@ -1204,11 +1317,53 @@ def home():
     <div id="extras"></div>
   </div>
 
+  <!-- Modal Address/Business -->
+  <div id="printerModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); backdrop-filter:blur(4px); z-index:9998; justify-content:center; align-items:center;">
+    <div style="background:#ffffff; padding:18px 18px 16px; border-radius:16px; max-width:360px; width:90%; box-shadow:0 18px 48px rgba(15,23,42,.5); font-family:inherit;">
+      <h3 style="margin:0 0 10px; font-size:18px; font-weight:800; color:#0f172a;">Printer Info</h3>
+      <div id="printerModalContent" style="font-size:14px; color:#4b5563;"></div>
+      <button type="button" onclick="closePrinterModal()" style="margin-top:14px; width:100%; padding:8px 0; border-radius:999px; border:0; background:#2563eb; color:#ffffff; font-weight:700; cursor:pointer;">
+        Close
+      </button>
+    </div>
+  </div>
+
   <!-- Toast container -->
   <div class="toast-container" id="toasts"></div>
 
   <script>
     // ====== Utils ======
+    function escapeHtml(s){
+      return String(s || '').replace(/[&<>"']/g, function(ch){
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch] || ch);
+      });
+    }
+
+    function openPrinterModal(data){
+      const modal = document.getElementById('printerModal');
+      const content = document.getElementById('printerModalContent');
+      if (!modal || !content || !data) return;
+      const addr = data.address || '';
+      const biz = data.business || '';
+
+      content.innerHTML =
+        '<div style="margin-bottom:10px;">' +
+          '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#9ca3af;margin-bottom:3px;">Address</div>' +
+          '<div style="white-space:pre-line;">' + escapeHtml(addr || 'N/A') + '</div>' +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#9ca3af;margin-bottom:3px;">Business</div>' +
+          '<div>' + escapeHtml(biz || 'N/A') + '</div>' +
+        '</div>';
+
+      modal.style.display = 'flex';
+    }
+
+    function closePrinterModal(){
+      const modal = document.getElementById('printerModal');
+      if (modal) modal.style.display = 'none';
+    }
+
     function pctColor(p){ if(p<0) return '#cbd5e1'; if(p>=50) return '#16a34a'; if(p>=20) return '#f59e0b'; return '#ef4444'; }
 
     // ====== Toast con icono + cerrar ======
@@ -1303,7 +1458,7 @@ def home():
       }</tr></thead>`;
     }
 
-    function pivotRowHTML(d){
+    function pivotRowHTML(d, idx){
       const items = d.items || [];
       const model = (d.model||'').toUpperCase();
       if(model==='C415') return '';
@@ -1324,7 +1479,7 @@ def home():
         catch(e){ bi = String(d.black_impressions); }
       }
 
-      return `<tr>
+      return `<tr data-idx="${idx}">
         <td class="nowrap">${d.ip||''}</td>
         <td>${(d.printer_name||'').trim()||'(unnamed)'}</td>
         <td class="nowrap">${d.model||''}</td>
@@ -1482,7 +1637,7 @@ def home():
         return;
       }
 
-      const htmlRows = rows2.map(r=>pivotRowHTML(r.raw)).join('');
+      const htmlRows = rows2.map((r, idx)=>pivotRowHTML(r.raw, idx)).join('');
       out.className='';
       out.innerHTML = tableHTML(htmlRows, state.sortKey, state.sortDir);
 
@@ -1499,6 +1654,16 @@ def home():
           }
           renderTable();
         });
+      });
+
+      const trs = out.querySelectorAll('tbody tr[data-idx]');
+      trs.forEach(tr => {
+        const idx = parseInt(tr.getAttribute('data-idx'), 10);
+        if (isNaN(idx)) return;
+        const rowObj = rows2[idx];
+        if (!rowObj) return;
+        tr.addEventListener('click', () => openPrinterModal(rowObj.raw));
+        tr.style.cursor = 'pointer';
       });
     }
 
@@ -1676,7 +1841,13 @@ def api_supplies():
 @app.get("/api/supplies_list")
 @login_required("api_supplies_list")
 def api_supplies_list():
+    """
+    Consulta múltiple optimizada:
+    - B7135 → modo concurrente limitado (máx 4 ChromeDriver)
+    - Otros modelos → threading normal (rápido)
+    """
     import threading
+    from queue import Queue
 
     ips = _parse_ips_param()
     if not ips:
@@ -1685,28 +1856,72 @@ def api_supplies_list():
     community = request.args.get("community", DEFAULT_COMMUNITY)
     timeout = _get_timeout_param()
     results = []
-    threads = []
 
-    # Función interna para procesar una impresora
-    def worker(ip):
+    b7135_ips, other_ips = [], []
+
+    # Detectar modelos primero (solo SNMP, muy rápido)
+    print("[INIT] Detectando modelos...")
+    for ip in ips:
+        try:
+            model = _snmp_get_model(ip, community, timeout)
+            if model == "B7135":
+                b7135_ips.append(ip)
+            else:
+                other_ips.append(ip)
+        except Exception as e:
+            print(f"[MODEL DETECT ERROR] {ip}: {e}")
+            other_ips.append(ip)
+
+    # --- Consulta paralela para los no-B7135 ---
+    def worker_generic(ip):
         try:
             data = get_cached(ip, community, timeout, TTL_DEFAULT)
             results.append(data)
         except Exception as e:
-            print(f"[THREAD ERROR] {ip}: {e}")
+            print(f"[GENERIC THREAD ERROR] {ip}: {e}")
             results.append({"ip": ip, "error": str(e)})
 
-    # Crear y lanzar un hilo por IP
-    for ip in ips:
-        t = threading.Thread(target=worker, args=(ip,), daemon=True)
+    threads = []
+    for ip in other_ips:
+        t = threading.Thread(target=worker_generic, args=(ip,), daemon=True)
         threads.append(t)
         t.start()
 
-    # Esperar que todos terminen
+    # --- Cola controlada para B7135 (máx 4 en paralelo) ---
+    q = Queue()
+    for ip in b7135_ips:
+        q.put(ip)
+
+    def worker_b7135():
+        while not q.empty():
+            ip = q.get()
+            try:
+                print(f"[B7135] Consultando {ip} ...")
+                data = get_cached(ip, community, timeout, TTL_DEFAULT)
+                results.append(data)
+            except Exception as e:
+                print(f"[B7135 ERROR] {ip}: {e}")
+                results.append({"ip": ip, "error": str(e)})
+            finally:
+                q.task_done()
+                time.sleep(1.5)  # descanso corto entre Seleniums
+
+    # Lanzar 4 hilos Selenium simultáneos
+    max_parallel = 4
+    for _ in range(min(max_parallel, len(b7135_ips))):
+        t = threading.Thread(target=worker_b7135, daemon=True)
+        t.start()
+        threads.append(t)
+
+    # Esperar todos
     for t in threads:
         t.join()
 
+    print(f"[DONE] Total procesadas: {len(results)} impresoras")
     return jsonify({"results": results})
+
+
+
 
 
 # ---------------------- Export XLSX -----------------

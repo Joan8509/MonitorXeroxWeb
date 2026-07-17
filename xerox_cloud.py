@@ -16,12 +16,17 @@ def normalize_consumables(consumables, printer_info=None):
         "transfer_belt_cleaner": "",
         "second_bias_transfer_roll": "",
         "waste_toner": "",
+        "black_impressions": -1,
     }
 
     if printer_info:
         normalized["model"] = printer_info.get("model", "")
         normalized["serial"] = printer_info.get("serial", "")
         normalized["ip"] = printer_info.get("ip", "")
+        try:
+            normalized["black_impressions"] = int(printer_info.get("black_impressions", -1))
+        except (TypeError, ValueError):
+            normalized["black_impressions"] = -1
 
     for item in consumables or []:
         name = (item.get("name") or "").strip()

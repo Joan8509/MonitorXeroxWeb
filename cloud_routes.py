@@ -67,13 +67,45 @@ def _load_xerox_auth():
 
 
 XEROX_AUTH = _load_xerox_auth()
-TOKEN = ""
+TOKEN = XEROX_AUTH.get("token", "")
 PRINTER_LIST_REFERER = XEROX_AUTH.get("referer", "https://office.services.xerox.com/FMP/Printers/AllPrinter")
 PRINTER_DETAILS_REFERER = "https://office.services.xerox.com/FMP/Printers/PrinterDetails?TabName=Status&AssetEncryptedID=mnmLZZjEqrLkFvG8lrcvLKuhW4BVcw1EJG287i3Kfl3WgwAcd%2F0fCSOrL8C5x7VzGpYHBP8hOlqUa7iAsWI%2FHnrxHU2Q6jhOsbjdxmXpe3SqpG8R3tucvlfzgWNHISFOwJq7q%2Fyfz%2Bq7pe3jET4XWi2oTN0boOX3X%2BMe2ZuNmht6OIAMOa09y49O%2BERiww70tZWVBbykGMSDzRBA2xbSM7dCIZTWuKN6qsO5QMFtzB2F6Ey%2BPiuGo9uSXfa%2BbQ3UAYoOr7zvkEIcpVA01oMwDg%3D%3D&DataSorceID=Grid_Printers&AssetAccountID=00000000-0000-0000-0000-000000000000&IsLogRequired=False"
-COOKIE = ""
+COOKIE = XEROX_AUTH.get("cookie", "")
 ASSET_ACCOUNT_ID = "b3d3b9ce-9bed-e811-9679-0025b52f01ef"
 
 
+
+def _normalize_match_text(value):
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").strip().lower()).strip()
+
+
+def _load_inventory_serial_overrides():
+    path = Path(__file__).with_name("inventory_serial_overrides.json")
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"[cloud] Unable to read inventory serial overrides: {exc}")
+        return []
+    return data.get("row_overrides", []) if isinstance(data, dict) else []
+
+
+def _inventory_override_serial(ip, business="", location="", address="", rules=None):
+    if rules is None:
+        rules = _load_inventory_serial_overrides()
+    ip = str(ip or "").strip()
+    row_text = _normalize_match_text(" ".join([business, location, address]))
+    for rule in rules:
+        rule_ip = str(rule.get("ip") or "").strip()
+        serial = str(rule.get("serial") or "").strip()
+        if not rule_ip or rule_ip != ip or not serial:
+            continue
+        rule_location = _normalize_match_text(rule.get("location", ""))
+        if rule_location and rule_location not in row_text:
+            continue
+        return serial
+    return ""
 
 def _legacy_inventory_by_ip(exclude_path=None):
     """Read older inventory workbooks only to recover serial numbers by IP."""
@@ -189,6 +221,7 @@ def load_inventory_excel(excel_path=None):
 
     inventory = {}
     serial_by_ip = _legacy_inventory_by_ip(path)
+    serial_override_rules = _load_inventory_serial_overrides()
 
     if path.name.lower() == "inventario printers.xlsx":
         try:
@@ -198,13 +231,13 @@ def load_inventory_excel(excel_path=None):
                     ip = row_values[3] if len(row_values) > 3 else ""
                     if not re.fullmatch(r"(?:\d{1,3}\.){3}\d{1,3}", ip):
                         continue
-                    serial = serial_by_ip.get(ip, "")
-                    if not serial:
-                        continue
                     address = row_values[0] if len(row_values) > 0 else ""
                     business = row_values[1] if len(row_values) > 1 else ""
                     location = row_values[2] if len(row_values) > 2 else ""
                     model = row_values[4] if len(row_values) > 4 else ""
+                    serial = _inventory_override_serial(ip, business, location, address, serial_override_rules) or serial_by_ip.get(ip, "")
+                    if not serial:
+                        continue
                     inventory[serial] = {
                         "serial": serial,
                         "business": business,
@@ -361,6 +394,17 @@ def _infer_model(values):
     return ""
 
 
+def _printer_black_impressions(printer):
+    for key in ("PageCountMono", "BlackPrintedImpressions", "BlackImpressions", "BlackPageCount", "PageCount"):
+        value = printer.get(key)
+        if value in (None, ""):
+            continue
+        try:
+            return int(float(str(value).replace(",", "").strip()))
+        except (TypeError, ValueError):
+            continue
+    return -1
+
 def _normalize_printer_entry(printer, inventory=None):
     model_name = printer.get("ModelName", "")
     if not any(model in model_name for model in ["B415", "B7135", "B8155"]):
@@ -375,6 +419,7 @@ def _normalize_printer_entry(printer, inventory=None):
                 "model": printer.get("ModelName", ""),
                 "serial": printer.get("SerialNumber", ""),
                 "ip": printer.get("PrinterIPAddress", ""),
+                "black_impressions": _printer_black_impressions(printer),
             },
         )
 
@@ -393,6 +438,7 @@ def _normalize_printer_entry(printer, inventory=None):
             "model": printer.get("ModelName", ""),
             "serial": printer.get("SerialNumber", ""),
             "ip": printer.get("PrinterIPAddress", ""),
+            "black_impressions": _printer_black_impressions(printer),
         },
     )
 
@@ -404,6 +450,16 @@ def _normalize_printer_entry(printer, inventory=None):
         normalized["address"] = inventory_entry.get("address", "")
 
     return normalized
+
+
+def _format_count(value):
+    try:
+        count = int(float(str(value).replace(",", "").strip()))
+    except (TypeError, ValueError):
+        return "N/A"
+    if count < 0:
+        return "N/A"
+    return f"{count:,}"
 
 
 def _parse_remaining_pct(value):
@@ -520,7 +576,7 @@ def get_project_printers(limit=None, inventory=None, serials=None):
     if not candidates:
         return printers
 
-    max_workers = min(8, len(candidates))
+    max_workers = min(24, len(candidates))
     def _safe_normalize(printer):
         try:
             return _normalize_printer_entry(printer, inventory=inventory)
@@ -532,6 +588,7 @@ def get_project_printers(limit=None, inventory=None, serials=None):
                     "model": printer.get("ModelName", ""),
                     "serial": printer.get("SerialNumber", ""),
                     "ip": printer.get("PrinterIPAddress", ""),
+                    "black_impressions": _printer_black_impressions(printer),
                 },
             )
 
@@ -594,6 +651,7 @@ def _local_snmp_printer(serial, inventory_entry):
         "serial": serial,
         "ip": ip,
         "printer_name": data.get("printer_name") or inventory_entry.get("printer_name", ""),
+        "black_impressions": data.get("black_impressions", -1),
         "business": inventory_entry.get("business", ""),
         "address": inventory_entry.get("address", ""),
         "toner": _item_value(_best_item(items, "toner")),
@@ -611,18 +669,29 @@ def get_project_printers_from_inventory_snmp(serials, inventory=None):
     if inventory is None:
         inventory = load_inventory_excel()
     inventory_by_key = {_serial_key(key): value for key, value in inventory.items()}
-    printers = []
+    targets = []
     for serial in parse_serials("\n".join(serials or [])):
         entry = inventory_by_key.get(_serial_key(serial))
-        if not entry:
-            continue
+        if entry and entry.get("ip"):
+            targets.append((serial, entry))
+
+    if not targets:
+        return []
+
+    def _safe_local(target):
+        serial, entry = target
         try:
-            printer = _local_snmp_printer(entry.get("serial", serial), entry)
+            return _local_snmp_printer(entry.get("serial", serial), entry)
         except Exception as exc:
             print(f"[cloud fallback] SNMP failed for {serial}: {exc}")
-            continue
-        if printer:
-            printers.append(printer)
+            return None
+
+    max_workers = min(12, len(targets))
+    printers = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for printer in executor.map(_safe_local, targets):
+            if printer:
+                printers.append(printer)
     return printers
 
 
@@ -664,6 +733,22 @@ def cloud():
         if _serial_key(serial) not in found_serial_keys
     ]
 
+    if missing_serials and inventory:
+        inventory_by_key = {_serial_key(key): value for key, value in inventory.items()}
+        fallback_serials = [
+            serial for serial in missing_serials
+            if "Finca" in _inventory_group_names(inventory_by_key.get(_serial_key(serial), {}))
+        ]
+        fallback_printers = get_project_printers_from_inventory_snmp(fallback_serials, inventory=inventory)
+        if fallback_printers:
+            printers.extend(fallback_printers)
+            found_serial_keys = {_serial_key(printer.get("serial", "")) for printer in printers}
+            missing_serials = [
+                serial for serial in requested_serials
+                if _serial_key(serial) not in found_serial_keys
+            ]
+
+
     rows_html = []
     inventory_error = None
     if not inventory and requested_serials:
@@ -681,6 +766,7 @@ def cloud():
         second_bias_transfer_roll = html.escape(printer.get("second_bias_transfer_roll", "") or "")
         waste_toner = html.escape(printer.get("waste_toner", "") or "")
         fuser = html.escape(printer.get("fuser", "") or "")
+        black_impressions = html.escape(_format_count(printer.get("black_impressions", -1)))
         business = html.escape(printer.get("business", "") or "")
         address = html.escape(printer.get("address", "") or "")
         status = _printer_status(printer)
@@ -714,6 +800,7 @@ def cloud():
             f"<td><span class=\"pill\">{model}</span></td>"
             f"<td>{serial or 'N/A'}</td>"
             f"<td>{ip}</td>"
+            f"<td>{black_impressions}</td>"
             f"<td>{_metric_cell(toner, toner_pct)}</td>"
             f"<td>{_metric_cell(drum, drum_pct)}</td>"
             f"<td>{_metric_cell(fuser, fuser_pct)}</td>"
@@ -729,16 +816,17 @@ def cloud():
         rows_html_content = "".join(rows_html)
     else:
         if inventory_error:
-            rows_html_content = f"<tr><td colspan='11' class='empty'>{html.escape(inventory_error)}</td></tr>"
+            rows_html_content = f"<tr><td colspan='12' class='empty'>{html.escape(inventory_error)}</td></tr>"
         elif search_error:
-            rows_html_content = f"<tr><td colspan='11' class='empty'>{html.escape(search_error)}</td></tr>"
+            rows_html_content = f"<tr><td colspan='12' class='empty'>{html.escape(search_error)}</td></tr>"
         elif requested_serials:
-            rows_html_content = "<tr><td colspan='11' class='empty'>No printers found for the entered serial numbers.</td></tr>"
+            rows_html_content = "<tr><td colspan='12' class='empty'>No printers found for the entered serial numbers.</td></tr>"
         else:
-            rows_html_content = "<tr><td colspan='11' class='empty'>Enter serial numbers and press Search.</td></tr>"
+            rows_html_content = "<tr><td colspan='12' class='empty'>Enter serial numbers and press Search.</td></tr>"
 
     template_path = Path(__file__).resolve().parent / "templates" / "cloud.html"
     page = template_path.read_text(encoding="utf-8")
+
     limit_text = f" (limit: {limit})" if limit is not None else ""
     missing_notice = ""
     if search_error:
@@ -757,6 +845,11 @@ def cloud():
         print(f"[cloud] Unable to build inventory location list: {exc}")
     bootstrap = "window.__INVENTORY_DATA__ = " + json.dumps(inventory_payload) + ";"
     username = session.get("username") or "administrator"
+    manage_users_link = """        <a href="/users">Manage Users</a>
+        <span class="divider">|</span>
+"""
+    if (username or "").strip().lower() != "joan":
+        page = page.replace(manage_users_link, "")
     lang = session.get("lang") if session.get("lang") in {"en", "es"} else "en"
     next_url = request.full_path.rstrip("?") or "/cloud"
     next_arg = quote(next_url, safe="/?=%")
@@ -826,7 +919,7 @@ def cloud():
         .replace('<strong id="countValue">0</strong>', f'<strong id="countValue">{len(printers)}</strong>')
         .replace("<!-- CLOUD_LIMIT -->", html.escape(limit_text))
         .replace("<!-- CLOUD_MISSING_NOTICE -->", missing_notice)
-        .replace('<tr><td colspan="11" class="empty">Enter serial numbers and press Search to load supplies.</td></tr>', rows_html_content)
+        .replace('<tr><td colspan="12" class="empty">Enter serial numbers and press Search to load supplies.</td></tr>', rows_html_content)
         .replace("<!-- CLOUD_BOOTSTRAP -->", bootstrap)
     )
 

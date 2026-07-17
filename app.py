@@ -4,10 +4,11 @@ import os, time, io, re, sqlite3, html as htmlmod
 from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Optional
-from flask import Flask, jsonify, request, Response, session, redirect, url_for
+from flask import Flask, jsonify, request, Response, session, redirect, url_for, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from puresnmp import walk, get as snmp_get
 
+import cloud_routes as cloud_data
 from cloud_routes import cloud as cloud_view, load_inventory_excel, _serial_key
 
 # ---- XLSX pretty export ----
@@ -113,6 +114,183 @@ def cloud():
         return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
     return cloud_view()
 
+
+def _monthly_control_path() -> Optional[Path]:
+    candidates = []
+    env_path = os.getenv("MONTHLY_METER_WORKBOOK", "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+    candidates.extend([
+        Path(r"C:\Joan\Datos_Printers\Printer Supplies-Count-Inventario(7-10-2026).xlsx"),
+        BASE_DIR / "Printer Supplies-Count-Inventario(7-10-2026).xlsx",
+    ])
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
+
+
+def _latest_finish_column(ws) -> int:
+    finish_cols = []
+    for col in range(1, min(ws.max_column, 200) + 1):
+        if str(ws.cell(3, col).value or "").strip().lower() == "finish":
+            finish_cols.append(col)
+    return max(finish_cols) if finish_cols else 0
+
+
+def _month_label_for_finish(ws, finish_col: int) -> str:
+    header_col = max(1, finish_col - 2)
+    value = ws.cell(1, header_col).value
+    if hasattr(value, "strftime"):
+        return value.strftime("%B %Y")
+    return str(value or "Previous")
+
+
+def _as_int_or_none(value):
+    if value in (None, ""):
+        return None
+    try:
+        return int(float(str(value).replace(",", "").strip()))
+    except (TypeError, ValueError):
+        return None
+
+
+@app.get("/cloud/monthly_meter_export")
+def monthly_meter_export():
+    if not session.get("user_id"):
+        return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
+    from openpyxl import load_workbook
+    from openpyxl.styles import PatternFill
+
+    source_path = _monthly_control_path()
+    if not source_path:
+        return jsonify({"error": "Monthly meter workbook not found."}), 404
+
+    source_wb = load_workbook(source_path, read_only=False, data_only=True)
+    if "Printers2024" not in source_wb.sheetnames:
+        source_wb.close()
+        return jsonify({"error": "Sheet Printers2024 not found."}), 400
+
+    ws_src = source_wb["Printers2024"]
+    previous_finish_col = _latest_finish_column(ws_src)
+    previous_label = _month_label_for_finish(ws_src, previous_finish_col) if previous_finish_col else "Previous"
+
+    ordered_rows = []
+    serials = []
+    for row_idx in range(4, ws_src.max_row + 1):
+        printer_name = ws_src.cell(row_idx, 1).value
+        address = ws_src.cell(row_idx, 2).value
+        location = ws_src.cell(row_idx, 3).value
+        serial = str(ws_src.cell(row_idx, 4).value or "").strip()
+        ip = str(ws_src.cell(row_idx, 5).value or "").strip()
+        model = ws_src.cell(row_idx, 6).value
+        if not any([printer_name, address, location, serial, ip, model]):
+            continue
+        previous_finish = ws_src.cell(row_idx, previous_finish_col).value if previous_finish_col else None
+        ordered_rows.append({
+            "excel_row": row_idx,
+            "printer_name": printer_name or "",
+            "location": location or "",
+            "serial": serial,
+            "ip": ip,
+            "model": model or "",
+            "previous_finish": previous_finish,
+        })
+        if serial:
+            serials.append(serial)
+    source_wb.close()
+
+    inventory = load_inventory_excel()
+    readings_by_serial = {}
+    serial_keys = {_serial_key(serial) for serial in serials if _serial_key(serial)}
+    try:
+        headers_cloud = {
+            "accept": "application/json",
+            "x-requested-with": "XMLHttpRequest",
+            "requestverificationtoken": cloud_data.TOKEN,
+            "referer": cloud_data.PRINTER_LIST_REFERER,
+            "cookie": cloud_data.COOKIE,
+            "user-agent": "Mozilla/5.0",
+        }
+        payload_cloud = {
+            "page": 1,
+            "pageSize": 500,
+            "sort[0][field]": "LocationName",
+            "sort[0][dir]": "asc",
+        }
+        response = cloud_data.requests.post(cloud_data.PRINTER_READ_URL, headers=headers_cloud, data=payload_cloud, timeout=30)
+        response.raise_for_status()
+        for row in response.json().get("Data", []):
+            serial = str(row.get("SerialNumber") or "").strip()
+            key = _serial_key(serial)
+            if key and key in serial_keys:
+                black_impressions = cloud_data._printer_black_impressions(row)
+                readings_by_serial[key] = {
+                    "serial": serial,
+                    # Keep the export consistent with the dashboard. Xerox may
+                    # expose this meter under different field names by model.
+                    "black_impressions": black_impressions if black_impressions >= 0 else None,
+                }
+    except Exception as exc:
+        print(f"[monthly export] Cloud meter query failed: {exc}")
+
+    missing_serials = [serial for serial in serials if _serial_key(serial) not in readings_by_serial]
+    if missing_serials:
+        from concurrent.futures import ThreadPoolExecutor
+
+        inventory_by_key = {_serial_key(key): value for key, value in inventory.items()}
+        fallback_targets = []
+        for serial in missing_serials:
+            entry = inventory_by_key.get(_serial_key(serial), {})
+            if "Finca" in _inventory_group_names(entry) and entry.get("ip"):
+                fallback_targets.append((serial, entry.get("ip")))
+
+        def _read_meter(target):
+            serial, ip = target
+            count = _get_black_impressions(ip, DEFAULT_COMMUNITY, min(TIMEOUT_DEFAULT, 2))
+            if count >= 0:
+                return _serial_key(serial), {"serial": serial, "black_impressions": count}
+            return _serial_key(serial), {"serial": serial, "black_impressions": None}
+
+        if fallback_targets:
+            max_workers = min(8, len(fallback_targets))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                for key, printer in executor.map(_read_meter, fallback_targets):
+                    if key:
+                        readings_by_serial[key] = printer
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Current Finish"
+    headers = ["Printer Name", "Serial", "IP", "Current Finish"]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="EAF1FF")
+        cell.alignment = Alignment(horizontal="center")
+
+    for item in ordered_rows:
+        current = None
+        if item["serial"]:
+            printer = readings_by_serial.get(_serial_key(item["serial"]))
+            if printer:
+                current = _as_int_or_none(printer.get("black_impressions"))
+        ws.append([item["printer_name"], item["serial"], item["ip"], current])
+
+    widths = [32, 18, 18, 18]
+    for col, width in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(col)].width = width
+    ws.freeze_panes = "A2"
+    bio = io.BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    stamp = time.strftime("%Y%m%d-%H%M")
+    filename = f"printer_current_finish_{stamp}.xlsx"
+    headers = {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+    return Response(bio.getvalue(), headers=headers)
 @app.route("/p")
 def short_cloud():
     return redirect("/cloud")
@@ -211,6 +389,16 @@ def _update_password(user_id: int, new_password: str):
     with _db() as conn:
         conn.execute("UPDATE users SET password_hash=? WHERE id=?",
                      (generate_password_hash(new_password), user_id))
+
+def _can_manage_users() -> bool:
+    return (session.get("username") or "").strip().lower() == "joan"
+
+def _list_users():
+    with _db() as conn:
+        rows = conn.execute(
+            "SELECT id, username, created_at FROM users ORDER BY username COLLATE NOCASE"
+        ).fetchall()
+        return [dict(row) for row in rows]
 
 def login_required(endpoint_name: str = ""):
     def deco(fn):
@@ -1197,6 +1385,145 @@ def _account_form_prefill(username_value: str) -> str:
       </form>
     """
 
+
+def _users_html(message: str = "", is_error: bool = False) -> str:
+    note = ""
+    if message:
+        note_class = "alert error" if is_error else "alert success"
+        note = f'<div class="{note_class}">{htmlmod.escape(message)}</div>'
+
+    user_rows = []
+    for user in _list_users():
+        created = user.get("created_at") or ""
+        user_rows.append(
+            "<tr>"
+            f"<td>{htmlmod.escape(str(user.get('username') or ''))}</td>"
+            f"<td>{htmlmod.escape(str(created))}</td>"
+            "</tr>"
+        )
+    rows_html = "".join(user_rows) or '<tr><td colspan="2">No users yet.</td></tr>'
+    signed_user = htmlmod.escape(session.get("username", ""))
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Manage Users - Printers Supplies</title>
+  <style>
+    :root{{--page:#eef5ff;--panel:#fff;--ink:#061936;--muted:#52627a;--line:#cfddf0;--blue:#2f66e8;--good:#047857;--good-bg:#ecfdf5;--bad:#b42318;--bad-bg:#fff2f1}}
+    *{{box-sizing:border-box}}
+    body{{margin:0;min-height:100vh;color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#f8fbff 0%,var(--page) 100%)}}
+    .shell{{max-width:1040px;margin:0 auto;padding:28px 22px 56px}}
+    .topbar{{display:flex;align-items:center;justify-content:space-between;gap:18px;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:18px;padding:18px 20px;box-shadow:0 18px 42px rgba(31,52,92,.08)}}
+    .brand-title{{font-size:24px;line-height:1;font-weight:900;color:#72a0f7}}
+    .brand-sub{{margin-top:6px;color:#3d5068;font-size:13px;font-weight:700}}
+    .nav{{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#34445c;font-size:14px}}
+    .nav a{{color:#124bd3;text-decoration:none;font-weight:850}}
+    .sep{{color:#a4b1c4;font-weight:800}}
+    .grid{{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:18px;margin-top:18px}}
+    .card{{background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 46px rgba(31,52,92,.09);overflow:hidden}}
+    .card-head{{padding:22px 24px 16px;border-bottom:1px solid #dbe6f5}}
+    h1{{margin:0;font-size:22px;line-height:1.15}}
+    h2{{margin:0;font-size:18px;line-height:1.2}}
+    p.muted{{color:var(--muted);margin:7px 0 0;font-size:14px}}
+    form{{padding:22px 24px 24px}}
+    label{{display:block;font-size:12px;color:#52627a;margin:0 0 8px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}}
+    input{{width:100%;height:44px;border:1px solid #d4dfef;border-radius:12px;padding:10px 12px;font-size:14px;background:#fff;color:var(--ink);outline:none}}
+    input:focus{{border-color:#86b1ff;box-shadow:0 0 0 4px rgba(47,102,232,.12)}}
+    .field{{margin-top:14px}}
+    .btn{{margin-top:18px;background:var(--blue);color:#fff;border:0;border-radius:12px;padding:12px 18px;font-weight:900;cursor:pointer;box-shadow:0 12px 28px rgba(47,102,232,.22)}}
+    table{{width:100%;border-collapse:collapse;font-size:14px}}
+    th,td{{text-align:left;padding:13px 16px;border-bottom:1px solid #e2ebf7;vertical-align:top}}
+    th{{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#263a59;background:#f7fbff}}
+    .alert{{margin:0 24px 24px;padding:12px 14px;border-radius:12px;font-size:14px;font-weight:750}}
+    .alert.error{{color:var(--bad);background:var(--bad-bg);border:1px solid #ffb4ad}}
+    .alert.success{{color:var(--good);background:var(--good-bg);border:1px solid #99f6c5}}
+    @media (max-width:820px){{.shell{{padding:16px 12px 36px}}.topbar{{align-items:flex-start;flex-direction:column}}.grid{{grid-template-columns:1fr}}}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div>
+        <div class="brand-title">Printers Supplies</div>
+        <div class="brand-sub">User access management</div>
+      </div>
+      <div class="nav">
+        <span>Signed in as <strong>{signed_user}</strong></span>
+        <span class="sep">|</span>
+        <a href="/cloud">Dashboard</a>
+        <span class="sep">|</span>
+        <a href="/account">Edit Account</a>
+        <span class="sep">|</span>
+        <a href="/logout">Logout</a>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-head">
+          <h1>Add User</h1>
+          <p class="muted">Create a login for someone who needs access to this app.</p>
+        </div>
+        <form method="post" action="/users">
+          <div class="field">
+            <label>Username</label>
+            <input name="username" placeholder="name or email" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input name="password" type="password" placeholder="min. 6 characters" autocomplete="new-password" required>
+          </div>
+          <div class="field">
+            <label>Confirm password</label>
+            <input name="confirm_password" type="password" placeholder="repeat password" autocomplete="new-password" required>
+          </div>
+          <button class="btn" type="submit">Create User</button>
+        </form>
+        {note}
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Current Users</h2>
+          <p class="muted">Existing accounts with access to the dashboard.</p>
+        </div>
+        <table>
+          <thead><tr><th>Username</th><th>Created</th></tr></thead>
+          <tbody>{rows_html}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+
+@app.get("/users")
+@login_required("users_get")
+def users_get():
+    if not _can_manage_users():
+        abort(403)
+    return _users_html()
+
+
+@app.post("/users")
+@login_required("users_post")
+def users_post():
+    if not _can_manage_users():
+        abort(403)
+
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    confirm_password = request.form.get("confirm_password") or ""
+
+    if not username:
+        return _users_html("Username is required.", True)
+    if password != confirm_password:
+        return _users_html("Passwords do not match.", True)
+
+    err = create_user(username, password)
+    if err:
+        return _users_html(err, True)
+    return _users_html(f"User {username} created successfully.", False)
 # ----------------------- Web (UI) -------------------------
 def _parse_int(value: Optional[str], default: int) -> int:
     try:

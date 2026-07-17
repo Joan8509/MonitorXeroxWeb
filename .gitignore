@@ -57,4 +57,21 @@ $null
 (x
 Optional[str]
 r.json())
-{
+# --- Private inventory / diagnostic artifacts ---
+inventory_serial_overrides.json
+ips.txt
+snapshots/
+*_dump.html
+debug_*.html
+soap_debug.xml
+test_all_cloud.py
+test_cloud_function.py
+test_fetch_with_login.py
+check_xerox_auth.py
+check_inventory_endpoint.py
+inspect_inventory.py
+create_short_url*.py
+Optional[str]
+Test.txt
+app_ok.py
+[{]
