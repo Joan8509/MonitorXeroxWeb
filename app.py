@@ -319,7 +319,10 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=(os.getenv("SESSION_COOKIE_SECURE", "0") == "1"),
 )
-AUTH_DB_PATH = os.getenv("AUTH_DB_PATH", "auth.db")
+AUTH_DB_PATH = os.getenv(
+    "AUTH_DB_PATH",
+    "/tmp/auth.db" if os.getenv("VERCEL") else "auth.db",
+)
 
 # ------------------------- OIDs ---------------------------
 DESC_BASE   = "1.3.6.1.2.1.43.11.1.1.6"   # prtMarkerSuppliesDescription
