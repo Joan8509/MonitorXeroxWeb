@@ -30,9 +30,14 @@ $tunnelOut = Join-Path $Root "public_tunnel.out.log"
 $tunnelErr = Join-Path $Root "public_tunnel.err.log"
 Remove-Item -LiteralPath $appOut,$appErr,$tunnelOut,$tunnelErr -ErrorAction SilentlyContinue
 
-$code = "from app import app; app.run(debug=False, host='0.0.0.0', port=$Port, threaded=True)"
 Write-Host "Starting Flask on http://127.0.0.1:$Port ..."
-Start-Process -FilePath $Python -ArgumentList @("-c", $code) -WorkingDirectory $Root -WindowStyle Hidden -RedirectStandardOutput $appOut -RedirectStandardError $appErr
+$previousFlaskPort = $env:FLASK_PORT
+$env:FLASK_PORT = [string]$Port
+try {
+    Start-Process -FilePath $Python -ArgumentList @("app.py") -WorkingDirectory $Root -WindowStyle Hidden -RedirectStandardOutput $appOut -RedirectStandardError $appErr
+} finally {
+    $env:FLASK_PORT = $previousFlaskPort
+}
 Start-Sleep -Seconds 3
 
 if (-not (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)) {
