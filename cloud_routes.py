@@ -201,14 +201,15 @@ def _load_cloud_inventory():
         if not clean_serial:
             continue
         groups = entry.get("location_groups", []) if isinstance(entry, dict) else []
+        group_names = [str(group).strip() for group in groups if str(group).strip()]
         inventory[clean_serial] = {
             "serial": clean_serial,
-            "business": "",
+            "business": " / ".join(group_names),
             "address": "",
             "ip": "",
             "model": "",
             "printer_name": "",
-            "location_groups": [str(group).strip() for group in groups if str(group).strip()],
+            "location_groups": group_names,
         }
     return inventory
 
