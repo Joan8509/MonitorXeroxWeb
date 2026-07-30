@@ -403,6 +403,17 @@ def _list_users():
         ).fetchall()
         return [dict(row) for row in rows]
 
+
+def _user_exists(user_id: int) -> bool:
+    with _db() as conn:
+        return conn.execute("SELECT 1 FROM users WHERE id=?", (user_id,)).fetchone() is not None
+
+
+def _delete_user(user_id: int):
+    with _db() as conn:
+        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+
+
 def login_required(endpoint_name: str = ""):
     def deco(fn):
         @wraps(fn)
@@ -1396,15 +1407,32 @@ def _users_html(message: str = "", is_error: bool = False) -> str:
         note = f'<div class="{note_class}">{htmlmod.escape(message)}</div>'
 
     user_rows = []
+    current_user_id = int(session.get("user_id") or 0)
     for user in _list_users():
-        created = user.get("created_at") or ""
+        user_id = int(user.get("id") or 0)
+        username = htmlmod.escape(str(user.get("username") or ""), quote=True)
+        created = htmlmod.escape(str(user.get("created_at") or ""))
+        if user_id == current_user_id:
+            manage_html = '<span class="self-note">Current account — use Edit Account</span>'
+        else:
+            manage_html = (
+                f'<form class="manage-user-form" method="post" action="/users/{user_id}/update">'
+                f'<input name="username" value="{username}" aria-label="Username" required>'
+                '<input name="new_password" type="password" placeholder="new password (optional)" '
+                'autocomplete="new-password" aria-label="New password">'
+                '<button class="table-btn" type="submit">Save</button></form>'
+                f'<form class="delete-form" method="post" action="/users/{user_id}/delete" '
+                'onsubmit="return confirm(\'Delete this user?\');">'
+                '<button class="table-btn danger" type="submit">Delete</button></form>'
+            )
         user_rows.append(
             "<tr>"
-            f"<td>{htmlmod.escape(str(user.get('username') or ''))}</td>"
-            f"<td>{htmlmod.escape(str(created))}</td>"
+            f"<td>{username}</td>"
+            f"<td>{created}</td>"
+            f"<td>{manage_html}</td>"
             "</tr>"
         )
-    rows_html = "".join(user_rows) or '<tr><td colspan="2">No users yet.</td></tr>'
+    rows_html = "".join(user_rows) or '<tr><td colspan="3">No users yet.</td></tr>'
     signed_user = htmlmod.escape(session.get("username", ""))
 
     return f"""<!doctype html>
@@ -1435,6 +1463,12 @@ def _users_html(message: str = "", is_error: bool = False) -> str:
     input:focus{{border-color:#86b1ff;box-shadow:0 0 0 4px rgba(47,102,232,.12)}}
     .field{{margin-top:14px}}
     .btn{{margin-top:18px;background:var(--blue);color:#fff;border:0;border-radius:12px;padding:12px 18px;font-weight:900;cursor:pointer;box-shadow:0 12px 28px rgba(47,102,232,.22)}}
+    .manage-user-form{{display:grid;grid-template-columns:minmax(130px,1fr) minmax(170px,1fr) auto;gap:8px;align-items:center}}
+    .delete-form{{display:inline-block;margin-top:8px}}
+    .table-btn{{background:var(--blue);color:#fff;border:0;border-radius:9px;padding:9px 12px;font-weight:850;cursor:pointer}}
+    .table-btn.danger{{background:#b42318}}
+    .self-note{{color:var(--muted);font-size:12px;font-weight:750}}
+    td input{{height:38px}}
     table{{width:100%;border-collapse:collapse;font-size:14px}}
     th,td{{text-align:left;padding:13px 16px;border-bottom:1px solid #e2ebf7;vertical-align:top}}
     th{{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#263a59;background:#f7fbff}}
@@ -1490,7 +1524,7 @@ def _users_html(message: str = "", is_error: bool = False) -> str:
           <p class="muted">Existing accounts with access to the dashboard.</p>
         </div>
         <table>
-          <thead><tr><th>Username</th><th>Created</th></tr></thead>
+          <thead><tr><th>Username</th><th>Created</th><th>Manage</th></tr></thead>
           <tbody>{rows_html}</tbody>
         </table>
       </div>
@@ -1527,6 +1561,44 @@ def users_post():
     if err:
         return _users_html(err, True)
     return _users_html(f"User {username} created successfully.", False)
+
+
+@app.post("/users/<int:user_id>/update")
+@login_required("users_update")
+def users_update(user_id):
+    if not _can_manage_users():
+        abort(403)
+    if not _user_exists(user_id):
+        abort(404)
+    if user_id == int(session.get("user_id") or 0):
+        return _users_html("Use Edit Account to change your current account.", True)
+
+    username = (request.form.get("username") or "").strip()
+    new_password = request.form.get("new_password") or ""
+    if not username:
+        return _users_html("Username is required.", True)
+    if new_password and len(new_password) < 6:
+        return _users_html("Password must be at least 6 characters.", True)
+
+    err = _update_username(user_id, username)
+    if err:
+        return _users_html(err, True)
+    if new_password:
+        _update_password(user_id, new_password)
+    return _users_html(f"User {username} updated successfully.", False)
+
+
+@app.post("/users/<int:user_id>/delete")
+@login_required("users_delete")
+def users_delete(user_id):
+    if not _can_manage_users():
+        abort(403)
+    if user_id == int(session.get("user_id") or 0):
+        return _users_html("You cannot delete the account currently signed in.", True)
+    if not _user_exists(user_id):
+        abort(404)
+    _delete_user(user_id)
+    return _users_html("User deleted successfully.", False)
 # ----------------------- Web (UI) -------------------------
 def _parse_int(value: Optional[str], default: int) -> int:
     try:
