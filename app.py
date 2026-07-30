@@ -1444,14 +1444,14 @@ def _users_html(message: str = "", is_error: bool = False) -> str:
     :root{{--page:#eef5ff;--panel:#fff;--ink:#061936;--muted:#52627a;--line:#cfddf0;--blue:#2f66e8;--good:#047857;--good-bg:#ecfdf5;--bad:#b42318;--bad-bg:#fff2f1}}
     *{{box-sizing:border-box}}
     body{{margin:0;min-height:100vh;color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#f8fbff 0%,var(--page) 100%)}}
-    .shell{{max-width:1040px;margin:0 auto;padding:28px 22px 56px}}
+    .shell{{width:100%;max-width:1320px;margin:0 auto;padding:28px 22px 56px}}
     .topbar{{display:flex;align-items:center;justify-content:space-between;gap:18px;background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:18px;padding:18px 20px;box-shadow:0 18px 42px rgba(31,52,92,.08)}}
     .brand-title{{font-size:24px;line-height:1;font-weight:900;color:#72a0f7}}
     .brand-sub{{margin-top:6px;color:#3d5068;font-size:13px;font-weight:700}}
     .nav{{display:flex;align-items:center;gap:12px;flex-wrap:wrap;color:#34445c;font-size:14px}}
     .nav a{{color:#124bd3;text-decoration:none;font-weight:850}}
     .sep{{color:#a4b1c4;font-weight:800}}
-    .grid{{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:18px;margin-top:18px}}
+    .grid{{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:18px;margin-top:18px}}
     .card{{background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 46px rgba(31,52,92,.09);overflow:hidden}}
     .card-head{{padding:22px 24px 16px;border-bottom:1px solid #dbe6f5}}
     h1{{margin:0;font-size:22px;line-height:1.15}}
@@ -1463,19 +1463,23 @@ def _users_html(message: str = "", is_error: bool = False) -> str:
     input:focus{{border-color:#86b1ff;box-shadow:0 0 0 4px rgba(47,102,232,.12)}}
     .field{{margin-top:14px}}
     .btn{{margin-top:18px;background:var(--blue);color:#fff;border:0;border-radius:12px;padding:12px 18px;font-weight:900;cursor:pointer;box-shadow:0 12px 28px rgba(47,102,232,.22)}}
-    .manage-user-form{{display:grid;grid-template-columns:minmax(130px,1fr) minmax(170px,1fr) auto;gap:8px;align-items:center}}
+    .manage-user-form{{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(170px,1.2fr);gap:8px;align-items:center}}
     .delete-form{{display:inline-block;margin-top:8px}}
     .table-btn{{background:var(--blue);color:#fff;border:0;border-radius:9px;padding:9px 12px;font-weight:850;cursor:pointer}}
+    .manage-user-form .table-btn{{grid-column:1/-1;justify-self:start}}
     .table-btn.danger{{background:#b42318}}
     .self-note{{color:var(--muted);font-size:12px;font-weight:750}}
     td input{{height:38px}}
-    table{{width:100%;border-collapse:collapse;font-size:14px}}
+    table{{width:100%;table-layout:fixed;border-collapse:collapse;font-size:14px}}
+    th:nth-child(1){{width:16%}} th:nth-child(2){{width:20%}} th:nth-child(3){{width:64%}}
+    td:nth-child(2){{white-space:nowrap}}
     th,td{{text-align:left;padding:13px 16px;border-bottom:1px solid #e2ebf7;vertical-align:top}}
     th{{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#263a59;background:#f7fbff}}
     .alert{{margin:0 24px 24px;padding:12px 14px;border-radius:12px;font-size:14px;font-weight:750}}
     .alert.error{{color:var(--bad);background:var(--bad-bg);border:1px solid #ffb4ad}}
     .alert.success{{color:var(--good);background:var(--good-bg);border:1px solid #99f6c5}}
-    @media (max-width:820px){{.shell{{padding:16px 12px 36px}}.topbar{{align-items:flex-start;flex-direction:column}}.grid{{grid-template-columns:1fr}}}}
+    @media (max-width:1100px){{.grid{{grid-template-columns:1fr}}}}
+    @media (max-width:820px){{.shell{{padding:16px 12px 36px}}.topbar{{align-items:flex-start;flex-direction:column}}.manage-user-form{{grid-template-columns:1fr}}.manage-user-form .table-btn{{grid-column:1}}}}
   </style>
 </head>
 <body>
