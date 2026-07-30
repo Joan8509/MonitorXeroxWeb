@@ -100,9 +100,6 @@ def get_consumables(
             "error": f"HTTP {r.status_code}"
         }
     
-    with open("b7135.html", "w", encoding="utf-8") as f:
-        f.write(r.text)   
-
     soup = BeautifulSoup(r.text, "html.parser")
 
     consumables = []
