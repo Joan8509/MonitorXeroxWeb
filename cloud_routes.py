@@ -184,6 +184,34 @@ def parse_serials(value):
     return serials
 
 
+def _load_cloud_inventory():
+    """Load the minimal, deployment-safe inventory used when Excel is unavailable."""
+    path = Path(__file__).with_name("cloud_inventory.json")
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"[cloud] Unable to read cloud inventory {path}: {exc}")
+        return {}
+
+    inventory = {}
+    for serial, entry in (data if isinstance(data, dict) else {}).items():
+        clean_serial = str(serial or "").strip()
+        if not clean_serial:
+            continue
+        groups = entry.get("location_groups", []) if isinstance(entry, dict) else []
+        inventory[clean_serial] = {
+            "serial": clean_serial,
+            "business": "",
+            "address": "",
+            "ip": "",
+            "model": "",
+            "printer_name": "",
+            "location_groups": [str(group).strip() for group in groups if str(group).strip()],
+        }
+    return inventory
+
 def load_inventory_excel(excel_path=None):
     """Load inventory serials and their business/address metadata from Excel."""
     if excel_path is None:
@@ -199,6 +227,9 @@ def load_inventory_excel(excel_path=None):
                 path = candidate
                 break
         else:
+            cloud_inventory = _load_cloud_inventory()
+            if cloud_inventory:
+                return cloud_inventory
             path = candidates[0]
     else:
         path = Path(excel_path)
@@ -329,6 +360,9 @@ def load_inventory_excel(excel_path=None):
 
 
 def _inventory_group_names(entry):
+    explicit_groups = entry.get("location_groups", [])
+    if explicit_groups:
+        return list(dict.fromkeys(str(group).strip() for group in explicit_groups if str(group).strip()))
     text = " ".join(str(entry.get(key, "") or "") for key in ("business", "address", "printer_name"))
     normalized = re.sub(r"[^a-z0-9]+", " ", text.lower())
     rules = [

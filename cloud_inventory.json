@@ -1,0 +1,347 @@
+{
+  "HQH822897": {
+    "location_groups": [
+      "Flagler",
+      "Icon"
+    ]
+  },
+  "HQH823013": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "HQH827966": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "HQH834180": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA090029": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA091162": {
+    "location_groups": [
+      "Gallardo",
+      "Hialeah"
+    ]
+  },
+  "QPA092491": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "QPA092526": {
+    "location_groups": [
+      "Hialeah",
+      "Icon"
+    ]
+  },
+  "QPA092528": {
+    "location_groups": [
+      "Doral",
+      "Icon",
+      "Unique"
+    ]
+  },
+  "QPA092539": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "QPA092542": {
+    "location_groups": [
+      "Hialeah"
+    ]
+  },
+  "QPA093020": {
+    "location_groups": [
+      "Finca"
+    ]
+  },
+  "QPA093027": {
+    "location_groups": [
+      "Gallardo",
+      "Hialeah"
+    ]
+  },
+  "QPA093080": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "QPA093084": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA093129": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA093291": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA093326": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA093327": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA094542": {
+    "location_groups": [
+      "Dallas"
+    ]
+  },
+  "QPA094752": {
+    "location_groups": [
+      "Dallas"
+    ]
+  },
+  "QPA097099": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA097114": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA097129": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "QPA100027": {
+    "location_groups": [
+      "Dallas"
+    ]
+  },
+  "YCQ127251": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "YEQ115681": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ138095": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "YEQ141813": {
+    "location_groups": [
+      "Doral",
+      "Icon",
+      "Unique"
+    ]
+  },
+  "YEQ141814": {
+    "location_groups": [
+      "Gallardo",
+      "Hialeah"
+    ]
+  },
+  "YEQ141818": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ141819": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ141820": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "YEQ141821": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ141826": {
+    "location_groups": [
+      "Dale Solution"
+    ]
+  },
+  "YEQ141831": {
+    "location_groups": [
+      "Gallardo",
+      "Doral"
+    ]
+  },
+  "YEQ141833": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "YEQ141834": {
+    "location_groups": [
+      "Finca"
+    ]
+  },
+  "YEQ141835": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ141836": {
+    "location_groups": [
+      "Finca"
+    ]
+  },
+  "YEQ142789": {
+    "location_groups": [
+      "Main Zoo"
+    ]
+  },
+  "YEQ142874": {
+    "location_groups": [
+      "Gallardo",
+      "Hialeah"
+    ]
+  },
+  "YEQ142883": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "YEQ142885": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "YEQ142887": {
+    "location_groups": [
+      "Finca"
+    ]
+  },
+  "YEQ142891": {
+    "location_groups": [
+      "Hialeah"
+    ]
+  },
+  "YEQ142894": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "YEQ142895": {
+    "location_groups": [
+      "Finca"
+    ]
+  },
+  "YEQ142898": {
+    "location_groups": [
+      "Hialeah"
+    ]
+  },
+  "YEQ142900": {
+    "location_groups": [
+      "Hialeah",
+      "Icon"
+    ]
+  },
+  "YEQ142901": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "YEQ145050": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "YEQ145166": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ145168": {
+    "location_groups": [
+      "Icon"
+    ]
+  },
+  "YEQ145170": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ145174": {
+    "location_groups": [
+      "Gallardo",
+      "Hialeah"
+    ]
+  },
+  "YEQ145175": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "YEQ145178": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ145183": {
+    "location_groups": [
+      "Icon"
+    ]
+  },
+  "YEQ145190": {
+    "location_groups": [
+      "Flagler"
+    ]
+  },
+  "YEQ145268": {
+    "location_groups": [
+      "Doral",
+      "Icon",
+      "Unique"
+    ]
+  },
+  "YEQ145273": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ145274": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  },
+  "YEQ145276": {
+    "location_groups": [
+      "107th"
+    ]
+  },
+  "YEQ166001": {
+    "location_groups": [
+      "Dallas"
+    ]
+  },
+  "YEQ166204": {
+    "location_groups": [
+      "Gallardo"
+    ]
+  }
+}
