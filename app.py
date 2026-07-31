@@ -335,13 +335,34 @@ PRT_LOCATION = "1.3.6.1.2.1.1.6.0"      # sysLocation
 PRT_MARKER_LIFECOUNT = "1.3.6.1.2.1.43.10.2.1.4"  # prtMarkerLifeCount
 PRT_ALERT_DESC       = "1.3.6.1.2.1.43.18.1.1.8"  # prtAlertDescription
 
-# -------------------- Simple Auth (SQLite) ----------------
+# ---------------- Simple Auth (SQLite / Postgres) ----------------
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+USE_POSTGRES = DATABASE_URL.startswith(("postgresql://", "postgres://"))
+
+
+def _pg_db():
+    import psycopg
+    from psycopg.rows import dict_row
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
+
+
 def _db():
     conn = sqlite3.connect(AUTH_DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def _init_auth_db():
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGSERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );""")
+        return
     with _db() as conn:
         conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -351,36 +372,77 @@ def _init_auth_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );""")
 
+
 def create_user(username: str, password: str) -> Optional[str]:
     if not username or not password:
         return "Username and password are required."
     if len(password) < 6:
         return "Password must be at least 6 characters."
+    password_hash = generate_password_hash(password)
+    if USE_POSTGRES:
+        import psycopg
+        try:
+            with _pg_db() as conn:
+                conn.execute(
+                    "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
+                    (username.strip(), password_hash),
+                )
+            return None
+        except psycopg.errors.UniqueViolation:
+            return "Username already exists."
     try:
         with _db() as conn:
             conn.execute(
                 "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                (username.strip(), generate_password_hash(password)),
+                (username.strip(), password_hash),
             )
         return None
     except sqlite3.IntegrityError:
         return "Username already exists."
 
+
 def verify_user(username: str, password: str) -> bool:
-    with _db() as conn:
-        cur = conn.execute("SELECT id, password_hash FROM users WHERE username = ?", (username.strip(),))
-        row = cur.fetchone()
-        if not row:
-            return False
-        return check_password_hash(row["password_hash"], password)
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            row = conn.execute(
+                "SELECT id, password_hash FROM users WHERE username = %s",
+                (username.strip(),),
+            ).fetchone()
+    else:
+        with _db() as conn:
+            row = conn.execute(
+                "SELECT id, password_hash FROM users WHERE username = ?",
+                (username.strip(),),
+            ).fetchone()
+    return bool(row and check_password_hash(row["password_hash"], password))
+
 
 def find_user_id(username: str) -> Optional[int]:
-    with _db() as conn:
-        cur = conn.execute("SELECT id FROM users WHERE username = ?", (username.strip(),))
-        row = cur.fetchone()
-        return int(row["id"]) if row else None
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            row = conn.execute(
+                "SELECT id FROM users WHERE username = %s", (username.strip(),)
+            ).fetchone()
+    else:
+        with _db() as conn:
+            row = conn.execute(
+                "SELECT id FROM users WHERE username = ?", (username.strip(),)
+            ).fetchone()
+    return int(row["id"]) if row else None
+
 
 def _update_username(user_id: int, new_username: str) -> Optional[str]:
+    if USE_POSTGRES:
+        import psycopg
+        try:
+            with _pg_db() as conn:
+                conn.execute(
+                    "UPDATE users SET username=%s WHERE id=%s",
+                    (new_username.strip(), user_id),
+                )
+            return None
+        except psycopg.errors.UniqueViolation:
+            return "Username already exists."
     try:
         with _db() as conn:
             conn.execute("UPDATE users SET username=? WHERE id=?", (new_username.strip(), user_id))
@@ -388,15 +450,30 @@ def _update_username(user_id: int, new_username: str) -> Optional[str]:
     except sqlite3.IntegrityError:
         return "Username already exists."
 
+
 def _update_password(user_id: int, new_password: str):
+    password_hash = generate_password_hash(new_password)
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            conn.execute(
+                "UPDATE users SET password_hash=%s WHERE id=%s", (password_hash, user_id)
+            )
+        return
     with _db() as conn:
-        conn.execute("UPDATE users SET password_hash=? WHERE id=?",
-                     (generate_password_hash(new_password), user_id))
+        conn.execute("UPDATE users SET password_hash=? WHERE id=?", (password_hash, user_id))
+
 
 def _can_manage_users() -> bool:
     return (session.get("username") or "").strip().lower() == "joan"
 
+
 def _list_users():
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            rows = conn.execute(
+                "SELECT id, username, created_at FROM users ORDER BY LOWER(username)"
+            ).fetchall()
+            return [dict(row) for row in rows]
     with _db() as conn:
         rows = conn.execute(
             "SELECT id, username, created_at FROM users ORDER BY username COLLATE NOCASE"
@@ -405,11 +482,20 @@ def _list_users():
 
 
 def _user_exists(user_id: int) -> bool:
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            return conn.execute(
+                "SELECT 1 FROM users WHERE id=%s", (user_id,)
+            ).fetchone() is not None
     with _db() as conn:
         return conn.execute("SELECT 1 FROM users WHERE id=?", (user_id,)).fetchone() is not None
 
 
 def _delete_user(user_id: int):
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            conn.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        return
     with _db() as conn:
         conn.execute("DELETE FROM users WHERE id=?", (user_id,))
 
@@ -419,7 +505,7 @@ def login_required(endpoint_name: str = ""):
         @wraps(fn)
         def _wrap(*args, **kwargs):
             if not session.get("user_id"):
-                if request.path.startswith("/api/") or request.headers.get("Accept","").startswith("application/json"):
+                if request.path.startswith("/api/") or request.headers.get("Accept", "").startswith("application/json"):
                     return jsonify({"error": "Unauthorized"}), 401
                 nxt = request.full_path if request.query_string else request.path
                 return redirect(url_for("login", next=nxt))
@@ -427,20 +513,35 @@ def login_required(endpoint_name: str = ""):
         return _wrap
     return deco
 
+
 def _bootstrap_admin_from_env():
     user = os.getenv("ADMIN_USER")
     pw = os.getenv("ADMIN_PASSWORD")
-    if user and pw:
-        with _db() as conn:
-            row = conn.execute("SELECT 1 FROM users WHERE username=?", (user.strip(),)).fetchone()
-            if not row:
-                conn.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)",
-                             (user.strip(), generate_password_hash(pw)))
+    if not (user and pw):
+        return
+    if USE_POSTGRES:
+        with _pg_db() as conn:
+            result = conn.execute(
+                """INSERT INTO users (username, password_hash)
+                   VALUES (%s, %s)
+                   ON CONFLICT (username) DO NOTHING""",
+                (user.strip(), generate_password_hash(pw)),
+            )
+            if result.rowcount:
                 print(f"[bootstrap] Created admin user '{user}' from ENV")
+        return
+    with _db() as conn:
+        row = conn.execute("SELECT 1 FROM users WHERE username=?", (user.strip(),)).fetchone()
+        if not row:
+            conn.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (user.strip(), generate_password_hash(pw)),
+            )
+            print(f"[bootstrap] Created admin user '{user}' from ENV")
+
 
 _init_auth_db()
 _bootstrap_admin_from_env()
-
 # -------------------- SNMP helper funcs -------------------
 def _decode(v: Any) -> Any:
     if isinstance(v, bytes):
