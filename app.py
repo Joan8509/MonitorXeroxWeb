@@ -1512,7 +1512,12 @@ def _users_html(message: str = "", is_error: bool = False) -> str:
     for user in _list_users():
         user_id = int(user.get("id") or 0)
         username = htmlmod.escape(str(user.get("username") or ""), quote=True)
-        created = htmlmod.escape(str(user.get("created_at") or ""))
+        created_value = user.get("created_at") or ""
+        if hasattr(created_value, "strftime"):
+            created_text = created_value.strftime("%Y-%m-%d %H:%M")
+        else:
+            created_text = str(created_value).replace("T", " ")[:16]
+        created = htmlmod.escape(created_text)
         if user_id == current_user_id:
             manage_html = '<span class="self-note">Current account — use Edit Account</span>'
         else:
@@ -1564,15 +1569,14 @@ def _users_html(message: str = "", is_error: bool = False) -> str:
     input:focus{{border-color:#86b1ff;box-shadow:0 0 0 4px rgba(47,102,232,.12)}}
     .field{{margin-top:14px}}
     .btn{{margin-top:18px;background:var(--blue);color:#fff;border:0;border-radius:12px;padding:12px 18px;font-weight:900;cursor:pointer;box-shadow:0 12px 28px rgba(47,102,232,.22)}}
-    .manage-user-form{{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(170px,1.2fr);gap:8px;align-items:center}}
-    .delete-form{{display:inline-block;margin-top:8px}}
+    .manage-user-form{{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(170px,1.2fr) auto;gap:8px;align-items:center;padding:0}}
+    .delete-form{{display:inline-block;margin-top:8px;padding:0}}
     .table-btn{{background:var(--blue);color:#fff;border:0;border-radius:9px;padding:9px 12px;font-weight:850;cursor:pointer}}
-    .manage-user-form .table-btn{{grid-column:1/-1;justify-self:start}}
     .table-btn.danger{{background:#b42318}}
     .self-note{{color:var(--muted);font-size:12px;font-weight:750}}
     td input{{height:38px}}
     table{{width:100%;table-layout:fixed;border-collapse:collapse;font-size:14px}}
-    th:nth-child(1){{width:16%}} th:nth-child(2){{width:20%}} th:nth-child(3){{width:64%}}
+    th:nth-child(1){{width:16%}} th:nth-child(2){{width:22%}} th:nth-child(3){{width:62%}}
     td:nth-child(2){{white-space:nowrap}}
     th,td{{text-align:left;padding:13px 16px;border-bottom:1px solid #e2ebf7;vertical-align:top}}
     th{{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#263a59;background:#f7fbff}}
