@@ -1229,7 +1229,7 @@ def _auth_base_html(body: str, title: str = "Printers Supplies", error: str = ""
         <p class="login-eyebrow">{htmlmod.escape(eyebrow)}</p>
         <h2>{htmlmod.escape(hero_title)}</h2>
         <p>{htmlmod.escape(hero_copy)}</p>
-        <div class="login-stats" aria-hidden="true"><span><strong>B7135</strong> {htmlmod.escape(ready)}</span><span><strong>B415</strong> Online</span><span><strong>SNMP</strong> {htmlmod.escape(active)}</span></div>
+        <div class="login-stats" aria-hidden="true"><span><strong>B7135</strong> {htmlmod.escape(ready)}</span><span><strong>B415</strong> Online</span><span><strong>B8155</strong> Online</span><span><strong>SNMP</strong> {htmlmod.escape(active)}</span></div>
       </div>
     </section>
     <section class="login-panel">
