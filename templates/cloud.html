@@ -282,6 +282,7 @@
             <textarea id="serials" name="serials" placeholder="YEQ141833&#10;YEQ142895"></textarea>
             <div class="inventoryControls">
               <select id="inventoryLocation" aria-label="Inventory location">
+                <option value="" selected disabled>Select a location</option>
                 <option value="__all__">All fleet locations</option>
               </select>
             </div>
@@ -585,8 +586,13 @@
     function populateInventoryLocations(data) {
       const select = document.getElementById('inventoryLocation');
       if (!select || !data || !Array.isArray(data.locations)) return;
-      const current = select.value || '__all__';
+      const current = select.value || '';
       select.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Select a location';
+      placeholder.disabled = true;
+      select.appendChild(placeholder);
       const all = document.createElement('option');
       all.value = '__all__';
       all.textContent = `All fleet locations (${data.count || 0})`;
@@ -629,7 +635,8 @@
       setInventoryDebug('', false);
       try {
         const data = await loadInventoryData(showErrors);
-        const selected = select.value || '__all__';
+        const selected = select.value;
+        if (!selected) return;
         let serials = data.serials || [];
         let label = 'all fleet locations';
         if (selected !== '__all__') {
